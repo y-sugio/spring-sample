@@ -1,0 +1,205 @@
+openapi: 3.0.1
+info:
+  title: Demo API
+  version: v1
+servers:
+- url: http://localhost:8080
+- url: https://api.example.com
+tags:
+- name: Projects
+  description: 案件API
+paths:
+  /api/projects:
+    get:
+      tags:
+      - Projects
+      summary: 案件一覧（ページングあり：配列レスポンス）
+      operationId: list
+      parameters:
+      - name: q
+        in: query
+        description: "名前の部分一致（例: 刷新）"
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: ページ番号（0開始）
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+        example: 0
+      - name: size
+        in: query
+        description: ページサイズ
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 10
+        example: 10
+      - name: sortKey
+        in: query
+        description: "ソートキー（例: updateDate）"
+        required: false
+        schema:
+          type: string
+          default: updateDate
+        example: updateDate
+      - name: sortDir
+        in: query
+        description: ソート順（asc|desc）
+        required: false
+        schema:
+          type: string
+          default: desc
+        example: desc
+      responses:
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectDto"
+              examples:
+                default:
+                  description: default
+                  externalValue: classpath:openapi/examples/project-list.json
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Projects
+      summary: 案件作成
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+            example:
+              name: 新規プロジェクト（サンプル）
+        required: true
+      responses:
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDto"
+        "400":
+          description: Validation Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProjectDto"
+      security:
+      - bearerAuth: []
+  /api/projects/{projectId}:
+    get:
+      tags:
+      - Projects
+      summary: 案件詳細取得
+      operationId: get
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "404":
+          description: Not Found
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDto"
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties:
+            type: object
+    CreateProjectRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          minLength: 0
+          type: string
+          description: 案件名
+          example: Webサイトリニューアル
+      description: 案件作成リクエスト
+    ProjectDto:
+      type: object
+      properties:
+        projectId:
+          type: integer
+          description: 案件ID
+          format: int64
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          description: 案件名
+          example: 2025年度 園児管理システム刷新
+        version:
+          type: integer
+          description: バージョン
+          format: int32
+          example: 1
+        createDate:
+          type: string
+          description: 作成日時
+          format: date-time
+          example: 2025-01-10T18:00:00+09:00
+        updateDate:
+          type: string
+          description: 更新日時
+          format: date-time
+          example: 2025-03-02T00:30:00+09:00
+      description: 案件情報
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
