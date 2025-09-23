@@ -1,0 +1,75 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.springdoc.openapi-gradle-plugin' version '1.9.0'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // OpenAPI (springdoc)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
+    // spring security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // JSP support (Spring Boot 3 / Jakarta)
+    implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
+    implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api:3.0.0'
+    implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl:3.0.1'
+
+    // （任意）Lombokを使うなら
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    // JPA導入時
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+openApi {
+    // アプリを起動して叩く URL（yaml/json どちらでも可）
+    apiDocsUrl.set("http://localhost:8080/v3/api-docs.yaml")
+    // 出力先
+    outputDir.set(file("$projectDir/openapi"))
+    outputFileName.set("api.yaml")
+    // 起動に時間がかかる場合の待ち時間（秒）
+    waitTimeInSeconds.set(30)
+    // アプリ起動時に渡す引数やプロファイル（必要なら）
+    // launchOptions.set(["--spring.profiles.active=dev"])
+}
+
+tasks.register('exportOpenApi') {
+    group = 'openapi'
+    description = 'Fetches OpenAPI yaml from running app and saves to openapi/api.yaml'
+    doLast {
+        def url = new URI("http://localhost:8080/v3/api-docs.yaml").toURL()
+        def bytes = url.openStream().readAllBytes()
+        file("openapi").mkdirs()
+        file("openapi/api.yaml").bytes = bytes
+        println "✅ Wrote openapi/api.yaml"
+    }
+}
+
+// （任意）アプリ起動後に手で以下を叩けば定義を取得できます：
+//   curl http://localhost:8080/v3/api-docs.yaml -o openapi/api.yaml
