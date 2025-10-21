@@ -22,9 +22,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // OpenAPI (springdoc)
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
     // spring security
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
@@ -41,35 +38,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    
+    // bootstrap
+    implementation 'org.webjars:bootstrap:5.3.3'
+    implementation 'org.webjars:webjars-locator-core:0.56'
 }
 
 tasks.test {
     useJUnitPlatform()
 }
 
-openApi {
-    // アプリを起動して叩く URL（yaml/json どちらでも可）
-    apiDocsUrl.set("http://localhost:8080/v3/api-docs.yaml")
-    // 出力先
-    outputDir.set(file("$projectDir/openapi"))
-    outputFileName.set("api.yaml")
-    // 起動に時間がかかる場合の待ち時間（秒）
-    waitTimeInSeconds.set(30)
-    // アプリ起動時に渡す引数やプロファイル（必要なら）
-    // launchOptions.set(["--spring.profiles.active=dev"])
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
 }
-
-tasks.register('exportOpenApi') {
-    group = 'openapi'
-    description = 'Fetches OpenAPI yaml from running app and saves to openapi/api.yaml'
-    doLast {
-        def url = new URI("http://localhost:8080/v3/api-docs.yaml").toURL()
-        def bytes = url.openStream().readAllBytes()
-        file("openapi").mkdirs()
-        file("openapi/api.yaml").bytes = bytes
-        println "✅ Wrote openapi/api.yaml"
-    }
-}
-
-// （任意）アプリ起動後に手で以下を叩けば定義を取得できます：
-//   curl http://localhost:8080/v3/api-docs.yaml -o openapi/api.yaml

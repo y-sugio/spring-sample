@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="com.obiscr.chatgpt.settings.EasyCodeState">
-    <option name="projectFiles" value="$PROJECT_DIR$/build/reports/problems/problems-report.html;/Users/sugio/IdeaProjects/spring-sample/build/resources/main/openapi/examples/create-project.json;/Users/sugio/IdeaProjects/spring-sample/build/resources/main/openapi/examples/project-list.json;/Users/sugio/IdeaProjects/spring-sample/openapi/api.yaml;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/config/OpenApiConfig.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/config/WebCorsConfig.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/presentation/error/ApiErrorHandler.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/presentation/project/CreateProjectRequest.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/presentation/project/ProjectController.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/presentation/project/ProjectDto.java;/Users/sugio/IdeaProjects/spring-sample/src/main/java/demo/DemoApplication.java;/Users/sugio/IdeaProjects/spring-sample/src/main/resources/openapi/examples/create-project.json;/Users/sugio/IdeaProjects/spring-sample/src/main/resources/openapi/examples/project-list.json" />
-  </component>
-</project>
