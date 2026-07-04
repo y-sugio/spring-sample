@@ -33,7 +33,50 @@
 | `XxxDto` | `CommandOutput` がネスト構造を持ち、**子データにもプレゼンテーションロジックが必要**な場合のみ。不要なら Entity をそのまま子データに使う |
 | `XxxValidator` | Form 単体（アノテーション）では表現できない複合バリデーションがある場合のみ |
 
-## 3. レイヤー間の呼び出しルール
+## 3. バリデーション規約
+
+バリデーションは対象の項目数で実装方法を使い分ける。
+
+| 対象 | 実装方法 | 例 |
+|---|---|---|
+| **単項目**（1 フィールドで完結） | Form のフィールドに **Bean Validation アノテーション**を付与 | `@NotBlank`、`@Size(max=100)`、`@Pattern` 等。汎用チェックはカスタムアノテーション（`XxxConstraint`）化してよい |
+| **複数項目**（フィールド間の相関） | **カスタムバリデーション**（`XxxValidator`、Spring の `Validator` 実装） | 開始日 ≦ 終了日、いずれか一方は必須、等 |
+
+- エラーメッセージはどちらも `messages.properties` のメッセージ ID で指定する（§6 参照）。
+- どちらのエラーも `BindingResult` に集約し、テンプレートの `th:errors` で表示する（表示方法は §10 参照）。
+- 単項目チェックを `XxxValidator` に書かない。逆に、相関チェックをアノテーションで無理に表現しない。
+- DB 参照が必要なチェック（重複チェック等）はバリデーションではなく **Command 側の業務チェック**（`BusinessException`）で行う（§5 参照）。
+
+```java
+// 単項目: Form のアノテーション
+public record ProjectForm(
+        @NotBlank(message = "VAL001")
+        @Size(max = 100, message = "VAL002")
+        String name,
+        LocalDate startDate,
+        LocalDate endDate
+) {}
+
+// 複数項目: カスタムバリデーション
+@Component
+public class ProjectValidator implements Validator {
+    @Override
+    public boolean supports(Class<?> clazz) {
+        return ProjectForm.class.isAssignableFrom(clazz);
+    }
+
+    @Override
+    public void validate(Object target, Errors errors) {
+        ProjectForm form = (ProjectForm) target;
+        if (form.startDate() != null && form.endDate() != null
+                && form.startDate().isAfter(form.endDate())) {
+            errors.rejectValue("endDate", "VAL004");  // 開始日は終了日以前にしてください 等
+        }
+    }
+}
+```
+
+## 4. レイヤー間の呼び出しルール
 
 - 呼び出し方向は `Controller → Command → Task → Mapper`。逆方向・飛び越しの呼び出しをしない。
   - 例外: Command から Mapper を直接呼ぶのは可（architecture.md のデータフロー参照）。
@@ -50,7 +93,7 @@ dbCall.execute("SYS001", () -> projectMapper.insert(entity));
 ProjectEntity entity = projectMapper.findById(id);
 ```
 
-## 4. 例外の使い分けルール
+## 5. 例外の使い分けルール
 
 | 例外 | throw する条件 | キャッチする場所 |
 |---|---|---|
@@ -74,7 +117,7 @@ public String create(...) {
 }
 ```
 
-## 5. メッセージ ID 規約
+## 6. メッセージ ID 規約
 
 - プロパティの記載フォーマット: **`メッセージID=メッセージID メッセージ本文`**（値の先頭に ID を重ねて書く）。
 - 種別ごとにプレフィックスを分ける（文字列は仮。確定次第更新）:
@@ -103,7 +146,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 
 - メッセージをコードにハードコードしない。必ず ID でプロパティから引く。
 
-## 6. 日付の扱い
+## 7. 日付の扱い
 
 | 層 | 型 |
 |---|---|
@@ -113,7 +156,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 - **Mapper（TypeHandler）以外の層で日付の文字列変換をしない。**
 - 登録日時・更新日時は Java でセットせず、**SQL 内で `sysdate`** を指定する。
 
-## 7. 表示フォーマット規約
+## 8. 表示フォーマット規約
 
 画面表示用の整形は **CommandOutput（および Dto）のプレゼンテーションロジック内**で行い、`common.util` の共通フォーマッターを呼び出す。
 
@@ -126,7 +169,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 - Controller・Command（計算ロジック）・Task で表示整形をしない。
 - 独自の `SimpleDateFormat` / `DateTimeFormatter` / `String.format` を各所に書かず、共通フォーマッター（`demo.common.util.Formatter`、クラス名は仮）に寄せる。
 
-## 8. Enum 規約
+## 9. Enum 規約
 
 - 全 Enum は `common.enums` に配置する（業務パッケージに置かない）。
 - コード値フィールド・表示ラベルフィールドを持たせ、`fromCode(String)` ファクトリメソッドを実装する。
@@ -155,7 +198,7 @@ public String getStatusLabel() {
 }
 ```
 
-## 9. Thymeleaf テンプレート規約
+## 10. Thymeleaf テンプレート規約
 
 - record にアクセスするときはメソッド呼び出し構文 `${dto.fieldName()}` を使う。
 - フォームのバリデーションエラーは `BindingResult` で受け取り、`th:errors` で表示する。
@@ -171,7 +214,7 @@ public String getStatusLabel() {
   - Enum 由来: CommandOutput で `Enum.values()` から変換
 - テンプレート内で Enum を直接参照（`T(...)` 構文）しない。選択肢の組み立てはテンプレートでやらず、必ず CommandOutput 側で行う。
 
-## 10. 設定ファイル規約
+## 11. 設定ファイル規約
 
 - `application.properties` にパスワード等の機密情報を**直書きしない**。Key Vault のシークレット名参照（`${db-password}` 形式）で書く。
 - ローカル専用の機密値ファイルを作らない（ローカルも Key Vault に接続する）。
