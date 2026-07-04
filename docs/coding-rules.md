@@ -418,5 +418,10 @@ public interface ProjectMapper {
 | `MdcFilter` | `common.filter` | 自動適用。ログイン ID はセッションキー `userId` から取得 |
 | `GlobalExceptionHandler` | `config` | `SystemException` を自動キャッチ → `error/system.html` |
 | `ValidationConfig` | `config` | `{VAL001}` 形式のメッセージ ID 解決を有効化 |
+| `BusinessHoursFilter` | `common.filter` | 自動適用（業務時間チェック。Mapper はインメモリ仮実装） |
+| `ErrorPageController` | `common.controller` | 業務時間外・セッションタイムアウト画面の表示 |
+| `PulldownItem` + `fragments/pulldown.html` | `common.util` / templates | プルダウン部品（利用箇所は項目定義の確定待ち） |
+| `LocalDateTypeHandler` | `common.mapper.typehandler` | LocalDate↔yyyyMMdd 変換（MyBatis starter 導入時に登録） |
+| `SamlConfig` / `OracleWalletInitializer` | `config` | SAML・Wallet のスケルトン（未決事項は TODO コメント参照） |
 
 > **命名が規約通りでないと LoggingAspect のポイントカットに乗らない**。クラス名のサフィックス（Controller / Command / Task / Mapper）は必ず守ること。

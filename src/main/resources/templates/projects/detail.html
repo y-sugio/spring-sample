@@ -22,7 +22,8 @@
 
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb small">
-      <li class="breadcrumb-item"><a th:href="@{/page/projects}">案件一覧</a></li>
+      <!--/* restore=1: 検索条件・ページングをセッションから復元して一覧へ戻る */-->
+      <li class="breadcrumb-item"><a th:href="@{/page/projects(restore=1)}">案件一覧</a></li>
       <li class="breadcrumb-item active" aria-current="page"
           th:text="${project.name()}"></li>
     </ol>
@@ -55,7 +56,8 @@
       </table>
     </div>
     <div class="card-footer bg-white d-flex gap-2">
-      <a th:href="@{/page/projects}" class="btn btn-outline-secondary">一覧へ戻る</a>
+      <!--/* restore=1: 検索条件・ページングをセッションから復元して一覧へ戻る */-->
+      <a th:href="@{/page/projects(restore=1)}" class="btn btn-outline-secondary">一覧へ戻る</a>
     </div>
   </div>
 </main>

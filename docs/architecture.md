@@ -30,11 +30,12 @@ demo/
 ├── config/                     … Security、GlobalExceptionHandler など横断設定
 ├── common/
 │   ├── enums/                  … 全 Enum（業務・レイヤーを問わず全てここに集約）
-│   ├── util/                   … 共通フォーマッター（Formatters）等のユーティリティ
+│   ├── util/                   … 共通フォーマッター（Formatters）、PulldownItem 等のユーティリティ
 │   ├── exception/              … SystemException、BusinessException
 │   ├── db/                     … DbCall（Mapper 呼び出しの共通ラッパー）
 │   ├── aspect/                 … LoggingAspect
 │   ├── filter/                 … MdcFilter、BusinessHoursFilter
+│   ├── controller/             … ErrorPageController（業務時間外・セッションタイムアウト画面）
 │   └── mapper/                 … 単一テーブルを扱う Mapper・Entity
 │       └── typehandler/        … MyBatis TypeHandler
 └── <業務名>/                   … 業務パッケージ（例: project）
@@ -115,8 +116,8 @@ src/main/resources/templates/
 
 | 構成要素 | 配置 | 役割 |
 |---|---|---|
-| `fragments/pulldown.html` | `templates/fragments/` | 選択肢リストと選択中値を受け取り `<select>` を描画するフラグメント |
-| `PulldownItem`（名称は仮） | `common.util` | 選択肢 1 件を表す record（`value` / `label`） |
+| `fragments/pulldown.html` | `templates/fragments/` | 選択肢リストと選択中値を受け取り `<select>` を描画するフラグメント（**実装済み**。利用箇所は項目定義の確定待ち） |
+| `PulldownItem` | `common.util` | 選択肢 1 件を表す record（`value` / `label`）。**実装済み** |
 
 **選択肢の取得元は 2 系統**。いずれも `CommandOutput` が `List<PulldownItem>` に変換して Model 経由でテンプレートに渡す。
 
@@ -305,41 +306,19 @@ MDC の値をパターンに含めることで、トラッキング ID・ユー�
 | `BusinessHoursFilter` | `common.filter` | リクエストごとに業務時間チェックを行う Servlet Filter |
 | `BusinessHoursMapper` | `common.mapper` | 業務サービス状況テーブルを参照（単一テーブルのため common） |
 
-動作:
-1. リクエストを受け取る
+動作（実装: `common.filter.BusinessHoursFilter`、`@Order(2)` = MdcFilter の後）:
+1. リクエストを受け取る（除外パスはスキップ）
 2. `BusinessHoursMapper` で業務サービス状況テーブルを参照する（`DbCall` 経由）
 3. 業務時間内 → そのまま次のフィルタ・処理へ
-4. 業務時間外 → 業務時間外エラー画面（`error/business-hours.html`）へ遷移
+4. 業務時間外 → 業務時間外エラー画面（`error/business-hours.html`）へフォワード（`ErrorPageController`）
 
-SAML 認証エンドポイント（`/login/saml2/**`）等、認証フローに関わるパスはチェック対象外とする（除外パスは未確定）。
-
-```java
-// common.filter.BusinessHoursFilter
-@Component
-public class BusinessHoursFilter implements Filter {
-
-    private final BusinessHoursMapper businessHoursMapper;
-    private final DbCall dbCall;
-
-    @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
-        boolean isOpen = dbCall.execute("SYS001",
-                () -> businessHoursMapper.isBusinessHours());
-        if (!isOpen) {
-            HttpServletRequest req = (HttpServletRequest) request;
-            req.getRequestDispatcher("/error/business-hours").forward(request, response);
-            return;
-        }
-        chain.doFilter(request, response);
-    }
-}
-```
+- 現状の除外パス: `/error/**`・`/webjars/**`・`/favicon.ico`。SAML 導入時に `/login/saml2/**` 等を追加する（TODO をコードに記載。正式な除外パスは未確定）。
+- `BusinessHoursMapper` は業務サービス状況テーブルの定義が未確定のため、インメモリ仮実装（`InMemoryBusinessHoursMapper`。常に業務時間内。`app.business-hours.force-closed=true` で時間外の動作確認が可能）。
 
 ### セッションタイムアウト
 
-- タイムアウト時間は `application.properties` の `server.servlet.session.timeout` で設定する（値は未確定）。
-- Spring Security の `invalidSessionUrl` で、無効なセッション ID を持つリクエストを一括でタイムアウト画面へリダイレクトする。
+- タイムアウト時間は `application.properties` の `server.servlet.session.timeout` で設定する（30m は仮の値。正式値は未確定）。
+- Spring Security の `invalidSessionUrl` で、無効なセッション ID を持つリクエストを一括でタイムアウト画面へリダイレクトする（実装済み: `config.SecurityConfig`）。
 
 ```java
 // config.SecurityConfig（抜粋）
@@ -348,7 +327,16 @@ http.sessionManagement(session -> session
 );
 ```
 
-- タイムアウト画面: `error/session-timeout.html`（認証不要 `permitAll`）
+- タイムアウト画面: `error/session-timeout.html`（`ErrorPageController`、認証不要 `permitAll`）
+
+### 画面遷移の状態保持（「戻る」対応）
+
+要件の画面遷移パターン A/B の「戻る」（検索条件・ページングを保持して一覧・検索画面へ戻る）は、
+**セッション保持の仮実装**（実現方式は未確定。TODO をコードに記載）。
+
+- Controller が検索実行時に検索条件（`q`・`page`・`size`）をセッションへ保存する。
+- 詳細画面の「戻る」リンクは `?restore=1` を付け、Controller はセッションから条件を復元して一覧を再表示する。
+- 実装例: `demo.project.controller.ProjectController`（セッションキー `projects.searchCondition`）
 
 ## 8. 認証アーキテクチャ（SAML）
 
@@ -362,6 +350,11 @@ http.sessionManagement(session -> session
 - `MdcFilter` はセッションのログイン ID を MDC の `userId` にセットする（§6 参照）。
 - CSRF: SAML の POST Binding でレスポンスが飛んでくるため、SAML エンドポイント（`/login/saml2/sso/**`）は CSRF 除外が必要。その他の画面は要検討。
 - CORS: 画面のみのため現時点では不要。
+
+**実装状況**: `config/SamlConfig.java` に実装スケルトンあり（`app.saml.enabled=true` で有効化する前提。
+メタデータ URL・属性名等の未決事項は TODO としてコードに記載）。
+OpenSAML が Maven Central にないため、依存（`spring-security-saml2-service-provider` + Shibboleth リポジトリ）は
+build.gradle にコメントアウトで用意してあり、導入時に有効化する。
 
 ## 9. インフラ接続（Key Vault / Oracle Wallet）
 
@@ -387,13 +380,20 @@ http.sessionManagement(session -> session
 - JDBC 接続時に `oracle.net.wallet_location` で Wallet のパスを指定する。
 - 接続 URL は TCPS プロトコルを使用する（例: `jdbc:oracle:thin:@tcps://...`）。
 
+**実装状況**: `config/OracleWalletInitializer.java` に Wallet パス設定の骨組みを実装済み
+（`app.oracle.wallet-location` 設定時のみ動作。Key Vault からの取得・展開は TODO としてコードに記載）。
+Key Vault 依存（`spring-cloud-azure-starter-keyvault-secrets`）とプロパティは
+build.gradle / application.properties にコメントアウトで用意してあり、エンドポイント確定後に有効化する。
+
 ## 10. 日付変換機構（MyBatis TypeHandler）
 
 DB のユーザー入力日付は `String(yyyyMMdd)`、Java 側は `LocalDate` で扱う（[要件 §5](./requirements/overview.md)）。
 変換は MyBatis の **TypeHandler** に集約し、各 Mapper で個別の変換処理を書かない。
 
-- 配置: `common.mapper.typehandler.LocalDateTypeHandler`
+- 配置: `common.mapper.typehandler.LocalDateTypeHandler`（**実装済み**。MyBatis コア依存のみ追加）
 - `BaseTypeHandler<LocalDate>` を継承。グローバル登録して `LocalDate` 型カラムに自動適用する。
+- TODO: DB 接続確定後に `mybatis-spring-boot-starter` を導入し、
+  `mybatis.type-handlers-package=demo.common.mapper.typehandler` で登録する（application.properties にコメントで用意済み）。
 
 ```java
 // common.mapper.typehandler.LocalDateTypeHandler

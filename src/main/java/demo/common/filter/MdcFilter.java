@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 import org.slf4j.MDC;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.Filter;
@@ -19,6 +20,7 @@ import jakarta.servlet.http.HttpSession;
  * ログパターン（application.properties）で全ログ行に出力される。
  */
 @Component
+@Order(1)   // 最初に MDC をセットする（BusinessHoursFilter より前）
 public class MdcFilter implements Filter {
 
     /** SAML 認証導入時にログイン ID を格納するセッションキー */

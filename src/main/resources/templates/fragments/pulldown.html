@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  プルダウン共通フラグメント。<select>/<option> は各テンプレートで手書きせずこれを使う。
+
+  引数:
+    name          … select の name 属性（フォームのフィールド名）
+    items         … List<PulldownItem>（CommandOutput で DB マスタ or Enum から変換して渡す）
+    selectedValue … 選択中の値（未選択なら null）
+
+  使用例:
+    <div th:replace="~{fragments/pulldown :: pulldown('status', ${output.statusItems()}, ${form.status()})}"></div>
+
+  TODO: 未選択オプション（「選択してください」等）の要否・文言が未確定。
+        必要になったら引数を追加する。
+*/-->
+<select th:fragment="pulldown(name, items, selectedValue)"
+        th:name="${name}" th:id="${name}" class="form-select">
+  <option th:each="item : ${items}"
+          th:value="${item.value()}"
+          th:text="${item.label()}"
+          th:selected="${item.value() == selectedValue}"></option>
+</select>
+</body>
+</html>

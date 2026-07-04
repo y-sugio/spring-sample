@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import demo.common.exception.BusinessException;
+import jakarta.servlet.http.HttpSession;
 import demo.project.command.ProjectCreateCommand;
 import demo.project.command.ProjectCreateCommandInput;
 import demo.project.command.ProjectCreateCommandOutput;
@@ -26,12 +27,24 @@ import jakarta.validation.Valid;
 
 /**
  * 案件管理の画面コントローラ。
- * リクエストの受け取り・CommandInput の生成・Command の呼び出し・Model への設定を行う。
+ * リクエストの受け取り・CommandInput の生成・Command の呼び出し・Model への設定・
+ * セッション管理（検索条件の保持）を行う。
  * 業務例外（BusinessException）はここでキャッチして元の画面を再描画する。
  */
 @Controller
 @RequestMapping("/page/projects")
 public class ProjectController {
+
+    /**
+     * 「戻る」時の検索条件・ページング復元用のセッションキー。
+     * TODO: 状態保持の実現方式（セッション保持か hidden パラメータ引き回しか）が
+     *       未確定のため、セッション保持の仮実装（requirements/overview.md §7）。
+     */
+    static final String SESSION_SEARCH_CONDITION = "projects.searchCondition";
+
+    /** セッションに保持する検索条件（画面遷移パターン A/B の「戻る」用） */
+    record SearchCondition(String q, int page, int size) {
+    }
 
     private final ProjectListCommand listCommand;
     private final ProjectDetailCommand detailCommand;
@@ -46,13 +59,28 @@ public class ProjectController {
         this.messageSource = messageSource;
     }
 
-    /** 一覧（検索） */
+    /**
+     * 一覧（検索）。
+     * restore=1 のとき（詳細画面からの「戻る」）はセッションの検索条件・ページングを復元する。
+     */
     @GetMapping
     public String list(@ModelAttribute("searchForm") ProjectSearchForm searchForm,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "20") int size,
-                       Model model) {
-        ProjectListCommandInput input = new ProjectListCommandInput(searchForm.q(), page, size);
+                       @RequestParam(defaultValue = "false") boolean restore,
+                       HttpSession session, Model model) {
+        SearchCondition condition = new SearchCondition(searchForm.q(), page, size);
+        if (restore) {
+            Object saved = session.getAttribute(SESSION_SEARCH_CONDITION);
+            if (saved instanceof SearchCondition savedCondition) {
+                condition = savedCondition;
+                model.addAttribute("searchForm", new ProjectSearchForm(condition.q()));
+            }
+        }
+        session.setAttribute(SESSION_SEARCH_CONDITION, condition);
+
+        ProjectListCommandInput input =
+                new ProjectListCommandInput(condition.q(), condition.page(), condition.size());
         model.addAttribute("output", listCommand.execute(input));
         return "projects/list";
     }
