@@ -595,7 +595,7 @@ DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で�
   ```properties
   spring.datasource.password=${db-password}   # Key Vault のシークレット名
   ```
-- Key Vault へのアクセスはマネージド ID（または SP）で認証する（認証方式は未確定 → §12 参照）。
+- Key Vault へのアクセスは**マネージド ID** で認証する。
 
 > **`application.properties` にパスワードを直書きしない**。ローカル開発時の扱いは未確定（→ §12 参照）。
 
@@ -623,7 +623,7 @@ DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で�
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
 - [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
-- [ ] Key Vault へのアクセス認証方式（マネージド ID か SP か）
+- [x] Key Vault へのアクセス認証方式 → マネージド ID
 - [ ] ローカル開発時の DB パスワード管理方法（Key Vault 接続なしで動かす手順）
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
