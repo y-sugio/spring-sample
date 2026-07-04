@@ -95,6 +95,7 @@ demo/
 | `common.exception` | `SystemException`、`BusinessException` |
 | `common.db` | `DbCall`。Mapper 呼び出しの共通ラッパー、DB 例外を `SystemException` に変換 |
 | `common.mapper` | 単一テーブルの Mapper・Entity |
+| `common.mapper.typehandler` | MyBatis TypeHandler（`LocalDateTypeHandler` 等） |
 
 ---
 
@@ -185,7 +186,35 @@ public String getStatusLabel() {
 | Controller → Command | `LocalDate` | そのまま `CommandInput` に渡す |
 | DB（ユーザー入力日付） | `String`（`yyyyMMdd`） | 例: `"20250104"` |
 | DB（登録・更新日時） | DB の `sysdate` で登録 | Java 側からは値を渡さない。INSERT/UPDATE 文で `sysdate` を直接指定 |
-| Mapper | 変換責務 | `LocalDate ↔ String(yyyyMMdd)` の変換は **Mapper 層で行う**。登録・更新時は `LocalDate → String`、取得時は `String → LocalDate` に変換する |
+| Mapper | 変換責務 | MyBatis の **TypeHandler** で `LocalDate ↔ String(yyyyMMdd)` を自動変換する |
+
+**TypeHandler の実装・配置**:
+
+- 配置: `common.mapper.typehandler.LocalDateTypeHandler`
+- MyBatis の `BaseTypeHandler<LocalDate>` を継承して実装する。
+- `setNonNullParameter`: `LocalDate → String(yyyyMMdd)` に変換して PreparedStatement にセット
+- `getNullableResult`: `String(yyyyMMdd) → LocalDate` に変換して返す
+- `application.properties`（または MyBatis 設定）でグローバル登録し、`LocalDate` 型のカラムに自動適用する。
+
+```java
+// common.mapper.typehandler.LocalDateTypeHandler
+@MappedTypes(LocalDate.class)
+public class LocalDateTypeHandler extends BaseTypeHandler<LocalDate> {
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    @Override
+    public void setNonNullParameter(PreparedStatement ps, int i, LocalDate date, JdbcType jdbcType) throws SQLException {
+        ps.setString(i, date.format(FMT));
+    }
+
+    @Override
+    public LocalDate getNullableResult(ResultSet rs, String columnName) throws SQLException {
+        String val = rs.getString(columnName);
+        return val == null ? null : LocalDate.parse(val, FMT);
+    }
+    // getNullableResult(ResultSet, int) / getNullableResult(CallableStatement, int) も同様
+}
+```
 
 > Entity のユーザー入力日付フィールドは `String` で定義し、Service・Task・Command 側は `LocalDate` のまま扱う。  
 > Mapper 以外の層で日付の文字列変換を行わない。  
