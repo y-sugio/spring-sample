@@ -596,8 +596,15 @@ DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で�
   spring.datasource.password=${db-password}   # Key Vault のシークレット名
   ```
 - Key Vault へのアクセスは**マネージド ID** で認証する。
+- ローカル開発時は `DefaultAzureCredential` のフォールバックチェーンにより **Azure CLI 認証**（`az login`）を使用する。設定変更不要で、`az login` 済みの Azure アカウントに Key Vault アクセス権があれば接続できる。
 
-> **`application.properties` にパスワードを直書きしない**。ローカル開発時の扱いは未確定（→ §12 参照）。
+| 環境 | 認証方式 | 必要な事前作業 |
+|---|---|---|
+| Azure（本番・ステージング等） | マネージド ID | アプリのマネージド ID に Key Vault アクセスポリシーを付与 |
+| ローカル開発 | Azure CLI（`az login`） | 開発者アカウントに Key Vault アクセスポリシーを付与 |
+
+> `spring-cloud-azure-starter-keyvault-secrets` + `DefaultAzureCredential` の組み合わせで上記を自動切り替えする。`application.properties` の変更は不要。  
+> **`application.properties` にパスワードを直書きしない**。
 
 ### CSRF / CORS
 
@@ -624,7 +631,7 @@ DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で�
 - [ ] ページング: 総件数・ページナビゲーションの要否
 - [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
 - [x] Key Vault へのアクセス認証方式 → マネージド ID
-- [ ] ローカル開発時の DB パスワード管理方法（Key Vault 接続なしで動かす手順）
+- [x] ローカル開発時の DB パスワード管理 → Key Vault に接続。`az login` 後に Azure CLI 認証でアクセス
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
