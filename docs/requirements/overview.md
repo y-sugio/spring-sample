@@ -122,14 +122,28 @@ src/main/resources/templates/
                 Model → [Thymeleaf テンプレート]
 ```
 
-## 4. 画面共通要件
+## 4. データ型規約
+
+### 日付
+
+| 層 | 型 | 備考 |
+|---|---|---|
+| 画面（Form） | `LocalDate` | Thymeleaf の日付入力から直接バインド |
+| Controller → Command | `LocalDate` | そのまま `CommandInput` に渡す |
+| DB（カラム） | `String` | フォーマットは未確定（→ §7 参照） |
+| Mapper | 変換責務 | `LocalDate ↔ String` の変換は **Mapper 層で行う**。登録・更新時は `LocalDate → String`、取得時は `String → LocalDate` に変換する |
+
+> Entity の日付フィールドは `String` で定義し、Service・Task・Command 側は `LocalDate` のまま扱う。
+> Mapper 以外の層で日付の文字列変換を行わない。
+
+## 5. 画面共通要件
 
 - ベースパス: `/page`
 - ルート `/` は案件一覧（`/page/projects`）にリダイレクトする。
 - 登録・更新完了時はフラッシュメッセージ（`RedirectAttributes`）で結果を通知し、詳細画面へリダイレクトする（PRG パターン）。
 - バリデーションエラー時はフォーム画面を再描画し、Thymeleaf の `th:errors` でエラーメッセージを表示する。
 
-## 5. セキュリティ
+## 6. セキュリティ
 
 現状は開発フェーズの暫定設定。**本番導入時は要再検討**。
 
@@ -137,7 +151,7 @@ src/main/resources/templates/
 - CSRF: 無効化中（Cookie 認証を入れる場合は再有効化を検討）。
 - CORS: 画面のみのため現時点では設定不要。
 
-## 6. 未確定・今後インプット待ちの要件
+## 7. 未確定・今後インプット待ちの要件
 
 案件から情報が入り次第、ここから各項目を確定させて該当セクション・機能ドキュメントに反映する。
 
@@ -146,3 +160,4 @@ src/main/resources/templates/
 - [ ] 案件（プロジェクト）エンティティの正式な項目定義（現状は name のみ）
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
+- [ ] 日付の DB 格納フォーマット（`yyyyMMdd`？ `yyyy-MM-dd`？）
