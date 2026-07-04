@@ -130,11 +130,13 @@ src/main/resources/templates/
 |---|---|---|
 | 画面（Form） | `LocalDate` | Thymeleaf の日付入力から直接バインド |
 | Controller → Command | `LocalDate` | そのまま `CommandInput` に渡す |
-| DB（カラム） | `String` | フォーマットは未確定（→ §7 参照） |
-| Mapper | 変換責務 | `LocalDate ↔ String` の変換は **Mapper 層で行う**。登録・更新時は `LocalDate → String`、取得時は `String → LocalDate` に変換する |
+| DB（ユーザー入力日付） | `String`（`yyyyMMdd`） | 例: `"20250104"` |
+| DB（登録・更新日時） | DB の `sysdate` で登録 | Java 側からは値を渡さない。INSERT/UPDATE 文で `sysdate` を直接指定 |
+| Mapper | 変換責務 | `LocalDate ↔ String(yyyyMMdd)` の変換は **Mapper 層で行う**。登録・更新時は `LocalDate → String`、取得時は `String → LocalDate` に変換する |
 
-> Entity の日付フィールドは `String` で定義し、Service・Task・Command 側は `LocalDate` のまま扱う。
-> Mapper 以外の層で日付の文字列変換を行わない。
+> Entity のユーザー入力日付フィールドは `String` で定義し、Service・Task・Command 側は `LocalDate` のまま扱う。  
+> Mapper 以外の層で日付の文字列変換を行わない。  
+> 登録・更新日時は Java 側でセットせず、SQL の `sysdate` に任せる。
 
 ## 5. 画面共通要件
 
@@ -160,4 +162,4 @@ src/main/resources/templates/
 - [ ] 案件（プロジェクト）エンティティの正式な項目定義（現状は name のみ）
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
-- [ ] 日付の DB 格納フォーマット（`yyyyMMdd`？ `yyyy-MM-dd`？）
+- [x] 日付の DB 格納フォーマット → ユーザー入力日付は `yyyyMMdd`（String）、登録・更新日時は `sysdate`
