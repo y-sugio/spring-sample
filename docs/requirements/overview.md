@@ -22,6 +22,7 @@
 | ビュー | Thymeleaf | `spring-boot-starter-thymeleaf`。テンプレートは `src/main/resources/templates/` |
 | CSS | Bootstrap 5 (WebJars) | |
 | 永続化 | 現状はインメモリ（`Map`） | JPA 導入を見据えて `spring-boot-starter-data-jpa` は依存に追加済み |
+| シークレット管理 | Azure Key Vault | DB ユーザーパスワード等の機密情報を管理。`spring-cloud-azure-starter-keyvault-secrets` を使用 |
 | ビルド | Gradle | `./gradlew build` |
 
 ## 3. アーキテクチャ / パッケージ構成
@@ -584,6 +585,20 @@ public class BusinessHoursFilter implements Filter {
 - SAML 認証成功後、アサーションからこれらの属性を取り出しセッションに格納する。
 - `MdcFilter` はセッションの `userId` を MDC にセットする（§7 参照）。
 
+### シークレット管理（Azure Key Vault）
+
+DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で管理し、`application.properties` にはシークレット名のみを記載する。
+
+- ライブラリ: `spring-cloud-azure-starter-keyvault-secrets`
+- アプリ起動時に Key Vault からシークレットを取得し、Spring の `Environment` に注入する。
+- `application.properties` の DB パスワード設定例:
+  ```properties
+  spring.datasource.password=${db-password}   # Key Vault のシークレット名
+  ```
+- Key Vault へのアクセスはマネージド ID（または SP）で認証する（認証方式は未確定 → §12 参照）。
+
+> **`application.properties` にパスワードを直書きしない**。ローカル開発時の扱いは未確定（→ §12 参照）。
+
 ### CSRF / CORS
 
 - CSRF: SAML の POST Binding でレスポンスが飛んでくるため、SAML エンドポイント（`/login/saml2/sso/**`）は CSRF 除外が必要。その他の画面は要検討。
@@ -608,6 +623,8 @@ public class BusinessHoursFilter implements Filter {
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
 - [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
+- [ ] Key Vault へのアクセス認証方式（マネージド ID か SP か）
+- [ ] ローカル開発時の DB パスワード管理方法（Key Vault 接続なしで動かす手順）
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
