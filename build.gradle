@@ -24,12 +24,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 
+    // AOP（LoggingAspect）
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    // @Transactional（MyBatis 導入までは TransactionManager なしのため実質無効）
+    implementation 'org.springframework:spring-tx'
+
     // （任意）Lombokを使うなら
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
-
-    // JPA導入時
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 

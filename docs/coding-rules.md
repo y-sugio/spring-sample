@@ -179,7 +179,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 | 区分値 | コード → Enum ラベル | `CommandOutput` / `Dto` |
 
 - Controller・Command（計算ロジック）・Task で表示整形をしない。
-- 独自の `SimpleDateFormat` / `DateTimeFormatter` / `String.format` を各所に書かず、共通フォーマッター（`demo.common.util.Formatter`、クラス名は仮）に寄せる。
+- 独自の `SimpleDateFormat` / `DateTimeFormatter` / `String.format` を各所に書かず、共通フォーマッター **`demo.common.util.Formatters`** に寄せる。
 
 ## 9. Enum 規約
 
@@ -230,3 +230,193 @@ public String getStatusLabel() {
 
 - `application.properties` にパスワード等の機密情報を**直書きしない**。Key Vault のシークレット名参照（`${db-password}` 形式）で書く。
 - ローカル専用の機密値ファイルを作らない（ローカルも Key Vault に接続する）。
+
+## 12. レイヤー別実装サンプル
+
+案件管理（`demo.project`）の実コードを規範とする。新しい業務を実装するときはこの形に揃える。
+
+### Controller レイヤ
+
+**Form（登録用）** — `src/main/java/demo/project/controller/ProjectForm.java`
+
+単項目チェックはアノテーション。`message` にはメッセージ ID を `{ }` で指定する。
+
+```java
+public record ProjectForm(
+        @NotBlank(message = "{VAL001}")
+        @Size(max = 100, message = "{VAL002}")
+        String name
+) {
+}
+```
+
+**Form（検索用）** — `src/main/java/demo/project/controller/ProjectSearchForm.java`
+
+検索と登録でバリデーションが異なるため、Form は別クラスにする。
+
+```java
+public record ProjectSearchForm(
+        String q      // 検索は必須項目なし
+) {
+}
+```
+
+**Controller** — `src/main/java/demo/project/controller/ProjectController.java`
+
+CommandInput の生成・Command 呼び出し・Model 設定・業務例外のキャッチを行う。
+
+```java
+@Controller
+@RequestMapping("/page/projects")
+public class ProjectController {
+
+    /** 一覧（検索） */
+    @GetMapping
+    public String list(@ModelAttribute("searchForm") ProjectSearchForm searchForm,
+                       @RequestParam(defaultValue = "0") int page,
+                       @RequestParam(defaultValue = "20") int size,
+                       Model model) {
+        ProjectListCommandInput input = new ProjectListCommandInput(searchForm.q(), page, size);
+        model.addAttribute("output", listCommand.execute(input));
+        return "projects/list";
+    }
+
+    /** 登録実行 */
+    @PostMapping
+    public String create(@Valid @ModelAttribute("form") ProjectForm form,
+                         BindingResult bindingResult, Model model, RedirectAttributes ra) {
+        if (bindingResult.hasErrors()) {
+            return "projects/new";                  // バリデーションエラー: フォーム再描画
+        }
+        ProjectCreateCommandOutput output;
+        try {
+            output = createCommand.execute(new ProjectCreateCommandInput(form.name()));
+        } catch (BusinessException e) {
+            model.addAttribute("errorMessage", resolve(e.getMessageId()));
+            return "projects/new";                  // 業務例外: 元の画面を再描画
+        }
+        ra.addFlashAttribute("message", resolve("MSG001"));
+        return "redirect:/page/projects/" + output.projectId();   // PRG
+    }
+}
+```
+
+### Command レイヤ
+
+**CommandInput** — `src/main/java/demo/project/command/ProjectCreateCommandInput.java`
+
+```java
+public record ProjectCreateCommandInput(
+        String name
+) {
+}
+```
+
+**Command** — `src/main/java/demo/project/command/ProjectCreateCommand.java`
+
+ユースケースと 1:1。トランザクション境界。Task・Mapper（DbCall 経由）を呼ぶ。
+
+```java
+@Component
+public class ProjectCreateCommand {
+
+    @Transactional
+    public ProjectCreateCommandOutput execute(ProjectCreateCommandInput input) {
+        if (duplicateCheckTask.execute(input.name())) {
+            throw new BusinessException("BIZ002");   // 通常ルートで返せない → 業務例外
+        }
+        ProjectEntity entity = new ProjectEntity();
+        entity.setName(input.name());
+        dbCall.execute("SYS001", () -> projectMapper.insert(entity));
+        return new ProjectCreateCommandOutput(entity.getProjectId());
+    }
+}
+```
+
+**CommandOutput** — `src/main/java/demo/project/command/ProjectDetailCommandOutput.java`
+
+プレゼンテーションロジック（表示整形）はここ。`Formatters` を呼ぶ。
+
+```java
+public record ProjectDetailCommandOutput(
+        Long projectId,
+        String name,
+        Integer version,
+        String createDateDisplay,
+        String updateDateDisplay
+) {
+    public static ProjectDetailCommandOutput from(ProjectEntity entity) {
+        return new ProjectDetailCommandOutput(
+                entity.getProjectId(),
+                entity.getName(),
+                entity.getVersion(),
+                Formatters.dateTime(entity.getCreateDate()),
+                Formatters.dateTime(entity.getUpdateDate())
+        );
+    }
+}
+```
+
+**Dto（子データ）** — `src/main/java/demo/project/command/ProjectDto.java`
+
+CommandOutput の子データ（一覧の 1 行）にプレゼンテーションロジックが必要なため Dto を実装。
+不要なら Entity をそのまま使う。
+
+```java
+public record ProjectDto(
+        Long projectId, String name, Integer version,
+        String createDateDisplay, String updateDateDisplay
+) {
+    public static ProjectDto from(ProjectEntity entity) { /* Formatters で整形 */ }
+}
+```
+
+### Task レイヤ
+
+**Task** — `src/main/java/demo/project/task/ProjectDuplicateCheckTask.java`
+
+業務ロジック。原則 1 項目を返す。入力 6 つ未満なので TaskInput は作らない。
+
+```java
+@Component
+public class ProjectDuplicateCheckTask {
+
+    /** @return 同名の案件が既に存在する場合 true */
+    public boolean execute(String name) {
+        return dbCall.execute("SYS001", () -> projectMapper.existsByName(name));
+    }
+}
+```
+
+### Mapper レイヤ
+
+**Mapper** — `src/main/java/demo/common/mapper/ProjectMapper.java`（単一テーブルなので common）
+
+```java
+public interface ProjectMapper {
+    List<ProjectEntity> search(String q, int offset, int limit);
+    ProjectEntity findById(Long projectId);
+    boolean existsByName(String name);
+    void insert(ProjectEntity entity);   // 登録・更新日時は SQL 側で sysdate
+}
+```
+
+※ MyBatis 導入までは `InMemoryProjectMapper` が仮実装（`@Repository`）。導入後は `@Mapper` + SQL に置き換える。
+
+**Entity** — `src/main/java/demo/common/mapper/ProjectEntity.java`
+
+区分値はコード値（`String`）のまま保持する getter / setter を持つクラス。
+
+### 共通機構の使い方（実装済みクラス）
+
+| クラス | 場所 | 使い方 |
+|---|---|---|
+| `DbCall` | `common.db` | `dbCall.execute("SYS001", () -> mapper.xxx())` |
+| `BusinessException` / `SystemException` | `common.exception` | メッセージ ID を渡して throw |
+| `Formatters` | `common.util` | `Formatters.date(...)` / `dateTime(...)` / `number(...)` |
+| `LoggingAspect` | `common.aspect` | 自動適用（`*Controller` / `*Command` / `*Task` / `*Mapper` 命名が条件） |
+| `MdcFilter` | `common.filter` | 自動適用。ログイン ID はセッションキー `userId` から取得 |
+| `GlobalExceptionHandler` | `config` | `SystemException` を自動キャッチ → `error/system.html` |
+| `ValidationConfig` | `config` | `{VAL001}` 形式のメッセージ ID 解決を有効化 |
+
+> **命名が規約通りでないと LoggingAspect のポイントカットに乗らない**。クラス名のサフィックス（Controller / Command / Task / Mapper）は必ず守ること。

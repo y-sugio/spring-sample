@@ -45,11 +45,11 @@
         </tr>
         <tr>
           <th class="text-muted fw-normal">作成日時</th>
-          <td th:text="${#temporals.format(project.createDate(), 'yyyy/MM/dd HH:mm:ss')}"></td>
+          <td th:text="${project.createDateDisplay()}"></td>
         </tr>
         <tr>
           <th class="text-muted fw-normal">更新日時</th>
-          <td th:text="${#temporals.format(project.updateDate(), 'yyyy/MM/dd HH:mm:ss')}"></td>
+          <td th:text="${project.updateDateDisplay()}"></td>
         </tr>
         </tbody>
       </table>

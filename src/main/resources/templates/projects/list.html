@@ -15,17 +15,18 @@
     <span class="text-muted small">（最大20件まで表示）</span>
   </div>
 
-  <!-- 検索フォーム -->
-  <form class="row g-2 align-items-center mb-4" method="get" th:action="@{/page/projects}">
+  <!-- 検索フォーム（検索用 Form。登録用とはバリデーションが異なる） -->
+  <form class="row g-2 align-items-center mb-4" method="get"
+        th:action="@{/page/projects}" th:object="${searchForm}">
     <div class="col-auto">
       <input type="text" class="form-control form-control-sm"
              name="q" placeholder="検索（案件名）"
-             th:value="${q}"/>
+             th:value="*{q}"/>
     </div>
     <div class="col-auto">
       <button type="submit" class="btn btn-primary btn-sm">検索</button>
     </div>
-    <div class="col-auto" th:if="${q != null and !#strings.isEmpty(q)}">
+    <div class="col-auto" th:if="${searchForm.q() != null and !#strings.isEmpty(searchForm.q())}">
       <a th:href="@{/page/projects}" class="btn btn-outline-secondary btn-sm">クリア</a>
     </div>
   </form>
@@ -33,6 +34,10 @@
   <!-- フラッシュメッセージ -->
   <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
     <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <span th:text="${errorMessage}"></span>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
@@ -51,7 +56,7 @@
           </tr>
           </thead>
           <tbody>
-          <tr th:each="p : ${projects}">
+          <tr th:each="p : ${output.projects()}">
             <td>
               <a th:href="@{/page/projects/{id}(id=${p.projectId()})}"
                  th:text="${p.projectId()}"
@@ -63,10 +68,10 @@
                  class="text-decoration-none text-dark"></a>
             </td>
             <td th:text="${p.version()}"></td>
-            <td th:text="${#temporals.format(p.createDate(), 'yyyy/MM/dd HH:mm')}"></td>
-            <td th:text="${#temporals.format(p.updateDate(), 'yyyy/MM/dd HH:mm')}"></td>
+            <td th:text="${p.createDateDisplay()}"></td>
+            <td th:text="${p.updateDateDisplay()}"></td>
           </tr>
-          <tr th:if="${#lists.isEmpty(projects)}">
+          <tr th:if="${#lists.isEmpty(output.projects())}">
             <td colspan="5" class="text-center text-muted py-3">データがありません</td>
           </tr>
           </tbody>

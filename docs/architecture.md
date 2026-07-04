@@ -12,7 +12,7 @@
 | ビュー | Thymeleaf | `spring-boot-starter-thymeleaf`。テンプレートは `src/main/resources/templates/` |
 | CSS | Bootstrap 5 (WebJars) | |
 | DB | Oracle | JDBC + TCPS。Oracle Wallet で SSL/TLS 認証 |
-| O/R マッパー | MyBatis（予定） | 現状はインメモリ（`Map`）実装。`spring-boot-starter-data-jpa` は削除予定 |
+| O/R マッパー | MyBatis（予定） | 現状は Mapper インターフェースの裏でインメモリ仮実装（`InMemoryProjectMapper`） |
 | 認証 | Spring Security SAML SP | `spring-security-saml2-service-provider`。IdP は Azure Entra ID |
 | シークレット管理 | Azure Key Vault | `spring-cloud-azure-starter-keyvault-secrets` + `DefaultAzureCredential` |
 | ビルド | Gradle | `./gradlew build` |
@@ -30,7 +30,7 @@ demo/
 ├── config/                     … Security、GlobalExceptionHandler など横断設定
 ├── common/
 │   ├── enums/                  … 全 Enum（業務・レイヤーを問わず全てここに集約）
-│   ├── util/                   … 共通フォーマッター等のユーティリティ
+│   ├── util/                   … 共通フォーマッター（Formatters）等のユーティリティ
 │   ├── exception/              … SystemException、BusinessException
 │   ├── db/                     … DbCall（Mapper 呼び出しの共通ラッパー）
 │   ├── aspect/                 … LoggingAspect
