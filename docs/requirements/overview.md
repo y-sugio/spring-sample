@@ -26,9 +26,9 @@
 
 ## 3. アーキテクチャ / パッケージ構成
 
-### パッケージ分割の基準: 業務単位
+### パッケージ分割の基準: 業務単位 × レイヤー
 
-パッケージは**技術レイヤーではなく業務単位**で切る。
+**第1階層: 業務単位**でパッケージを切り、その中を**レイヤードアーキテクチャ**で構成する。
 
 > **業務の定義**: ユーザーが一連として行う作業のまとまり。  
 > 例）案件に対して「新規作成・一覧確認・詳細確認・更新」を行うなら、それらを一まとめにして一つの業務とする。  
@@ -36,31 +36,83 @@
 
 ```
 demo/
-├── config/            … Security など横断設定（業務に属さないもの）
-└── <業務名>/          … 業務ごとのパッケージ
-    ├── XxxController.java      … 画面コントローラ
-    ├── XxxService.java         … ビジネスロジック
-    ├── XxxDto.java             … レスポンス/画面渡しデータ
-    └── CreateXxxRequest.java   … フォーム入力値
+├── config/                     … Security など横断設定
+├── common/
+│   └── mapper/                 … 単一テーブルを扱う Mapper・Entity
+└── <業務名>/                   … 業務パッケージ（例: project）
+    ├── controller/             … Controller レイヤ
+    ├── command/                … Command レイヤ
+    ├── task/                   … Task レイヤ
+    └── mapper/                 … 複数テーブルを扱い業務との結びつきが強い Mapper・Entity
 ```
 
-**テンプレートも業務単位で揃える**:
+---
+
+### 各レイヤーの責務
+
+#### Controller レイヤ (`<業務>.controller`)
+
+| クラス種別 | 役割 |
+|---|---|
+| `XxxController` | ユーザーリクエストの受け取り、セッション管理、Command レイヤの呼び出し、Model への設定 |
+| `XxxForm` | 画面入力値のバインディング。Bean Validation アノテーションを付与 |
+| `XxxValidator` | Form 単体では表現できない複合バリデーション（`Validator` 実装） |
+| `XxxConstraint` 等 | カスタムバリデーションアノテーション |
+
+- Command レイヤへ渡す `CommandInput` を生成するのも Controller の責務。
+
+#### Command レイヤ (`<業務>.command`)
+
+| クラス種別 | 役割 |
+|---|---|
+| `XxxCommand` | **トランザクション境界**。ユースケースと 1:1 対応。Mapper・Task を呼び出す。業務に関係のない判定処理もここ |
+| `XxxCommandInput` | Command への入力値 |
+| `XxxCommandOutput` | Model に設定するクラス。**プレゼンテーションロジック**（表示用フォーマット、ラベル変換など）を実装する |
+| `XxxDto` | `CommandOutput` がネスト構造を持つ場合の子データ用クラス。子データにもプレゼンテーションロジックが必要な場合に実装。子データへのプレゼンテーションロジックが不要なら Entity をそのまま利用 |
+
+#### Task レイヤ (`<業務>.task`)
+
+| クラス種別 | 役割 |
+|---|---|
+| `XxxTask` | **業務ロジックの実装**。Mapper を呼び出す。原則 1 項目を返す |
+| `XxxTaskInput` | Task への入力値。**入力値が 6 つ以上になる場合に実装**する（それ未満は引数で渡す） |
+| `XxxTaskOutput` | Task がオブジェクトを返す必要がある場合に実装 |
+
+#### Mapper レイヤ
+
+| 配置 | 条件 |
+|---|---|
+| `common.mapper` | **単一テーブル**を扱う Mapper・Entity |
+| `<業務>.mapper` | **複数テーブル**をまたぎ、業務との結びつきが強い Mapper・Entity |
+
+---
+
+### テンプレート構成（業務単位）
 
 ```
 src/main/resources/templates/
 ├── fragments/          … 共通部品（ナビゲーション等）
-└── <業務名>/           … 業務ごとのテンプレート
+└── <業務名>/           … 業務ごとのテンプレート（複数 HTML）
     ├── list.html
     ├── new.html
     └── detail.html
 ```
 
-### クラス設計の方針
+---
 
-- Controller は `@Controller`。
-- Service の返り値 DTO（record）をそのまま Model に渡す。
-  Thymeleaf テンプレートからはメソッド呼び出し構文 `${dto.fieldName()}` で参照する。
-- 共通ナビゲーションバーは `src/main/resources/templates/fragments/nav.html` に切り出す。
+### データの流れ（概略）
+
+```
+[画面] → Form → Controller → CommandInput
+                    ↓
+                Command（@Transactional）
+                  ├── TaskInput → Task → TaskOutput
+                  └── Mapper
+                    ↓
+                CommandOutput（プレゼンテーションロジック）
+                    ↓
+                Model → [Thymeleaf テンプレート]
+```
 
 ## 4. 画面共通要件
 
