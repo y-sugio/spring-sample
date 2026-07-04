@@ -163,6 +163,14 @@ public String getStatusLabel() {
 - メッセージは `#{メッセージID}` でプロパティから参照する。
 - 共通部品（ナビゲーション等）は `fragments/` に切り出し、`th:replace` で読み込む。
 
+### プルダウン
+
+- プルダウンは**共通フラグメント**（`fragments/pulldown.html`）で描画する。テンプレートに `<select>` / `<option>` のループを手書きしない。
+- 選択肢は **DB（マスタテーブル）または Enum** から取得し、`CommandOutput` で `List<PulldownItem>` に変換して渡す（仕組みは architecture.md 参照）。
+  - DB 由来: Command が Mapper（`DbCall` 経由）で取得 → CommandOutput で変換
+  - Enum 由来: CommandOutput で `Enum.values()` から変換
+- テンプレート内で Enum を直接参照（`T(...)` 構文）しない。選択肢の組み立てはテンプレートでやらず、必ず CommandOutput 側で行う。
+
 ## 10. 設定ファイル規約
 
 - `application.properties` にパスワード等の機密情報を**直書きしない**。Key Vault のシークレット名参照（`${db-password}` 形式）で書く。

@@ -101,12 +101,35 @@ Java パッケージと同じく**業務単位**でディレクトリを切る�
 
 ```
 src/main/resources/templates/
-├── fragments/          … 共通部品（ナビゲーション等）
+├── fragments/          … 共通部品（ナビゲーション、プルダウン等）
 ├── error/              … エラー画面（system / business-hours / session-timeout / 404）
 └── <業務名>/           … 業務ごとのテンプレート
     ├── list.html
     ├── new.html
     └── detail.html
+```
+
+### プルダウン部品（共通フラグメント）
+
+プルダウン（`<select>`）は共通フラグメントで描画する。各テンプレートで `<option>` のループを手書きしない。
+
+| 構成要素 | 配置 | 役割 |
+|---|---|---|
+| `fragments/pulldown.html` | `templates/fragments/` | 選択肢リストと選択中値を受け取り `<select>` を描画するフラグメント |
+| `PulldownItem`（名称は仮） | `common.util` | 選択肢 1 件を表す record（`value` / `label`） |
+
+**選択肢の取得元は 2 系統**。いずれも `CommandOutput` が `List<PulldownItem>` に変換して Model 経由でテンプレートに渡す。
+
+| 取得元 | 取得方法 |
+|---|---|
+| DB（マスタテーブル） | Command が Mapper（`DbCall` 経由）で取得し、CommandOutput で `PulldownItem` に変換 |
+| Enum | CommandOutput で `Enum.values()` から `PulldownItem` に変換 |
+
+```
+【DB 由来】  Command ─ DbCall ─ Mapper → List<Entity> ─ CommandOutput → List<PulldownItem> ─┐
+【Enum 由来】                     Enum.values() ─ CommandOutput → List<PulldownItem> ─────────┤
+                                                                                              ↓
+                                                          fragments/pulldown.html（<select> 描画）
 ```
 
 ## 4. 例外ハンドリング機構
