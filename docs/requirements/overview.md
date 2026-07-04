@@ -484,7 +484,33 @@ MDC の値をパターンに含めることで、トラッキング ID・ユー�
 - 登録・更新完了時はフラッシュメッセージ（`RedirectAttributes`）で結果を通知し、詳細画面へリダイレクトする（PRG パターン）。
 - バリデーションエラー時はフォーム画面を再描画し、Thymeleaf の `th:errors` でエラーメッセージを表示する。
 
-## 9. 業務時間チェック
+## 9. セッション管理
+
+### セッションタイムアウト設定
+
+- タイムアウト時間は `application.properties` で設定する。
+  ```properties
+  server.servlet.session.timeout=30m  # 時間は未確定（→ §12 参照）
+  ```
+- タイムアウトが発生したリクエスト（無効なセッション）はセッションタイムアウト画面へ遷移する。
+
+### タイムアウト検知と遷移
+
+Spring Security の `invalidSessionUrl` を使い、無効なセッション ID を持つリクエストを一括でタイムアウト画面へリダイレクトする。
+
+```java
+// config.SecurityConfig（抜粋）
+http.sessionManagement(session -> session
+    .invalidSessionUrl("/error/session-timeout")
+);
+```
+
+- タイムアウト画面: `error/session-timeout.html`
+- タイムアウト画面自体は認証不要（`permitAll`）とする。
+
+---
+
+## 10. 業務時間チェック
 
 ### 概要
 
@@ -537,7 +563,7 @@ public class BusinessHoursFilter implements Filter {
 }
 ```
 
-## 10. セキュリティ・認証
+## 11. セキュリティ・認証
 
 ### 認証方式
 
@@ -569,7 +595,7 @@ public class BusinessHoursFilter implements Filter {
 - ユーザー種別の値体系（Enum 定義に必要）
 - 認可ルール（ロールによる画面・操作の制限）
 
-## 11. 未確定・今後インプット待ちの要件
+## 12. 未確定・今後インプット待ちの要件
 
 案件から情報が入り次第、ここから各項目を確定させて該当セクション・機能ドキュメントに反映する。
 
@@ -581,6 +607,7 @@ public class BusinessHoursFilter implements Filter {
 - [ ] 案件（プロジェクト）エンティティの正式な項目定義（現状は name のみ）
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
+- [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
