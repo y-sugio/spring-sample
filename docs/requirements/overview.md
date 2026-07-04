@@ -95,7 +95,7 @@ demo/
 | `common.exception` | `SystemException`、`BusinessException` |
 | `common.db` | `DbCall`。Mapper 呼び出しの共通ラッパー、DB 例外を `SystemException` に変換 |
 | `common.aspect` | `LoggingAspect`。各レイヤーの開始・終了ログを AOP で出力 |
-| `common.filter` | `MdcFilter`。リクエストごとにトラッキング ID・ユーザー ID・IP を MDC にセット |
+| `common.filter` | `MdcFilter`（MDC セット）、`BusinessHoursFilter`（業務時間チェック） |
 | `common.mapper` | 単一テーブルの Mapper・Entity |
 | `common.mapper.typehandler` | MyBatis TypeHandler（`LocalDateTypeHandler` 等） |
 
@@ -484,7 +484,60 @@ MDC の値をパターンに含めることで、トラッキング ID・ユー�
 - 登録・更新完了時はフラッシュメッセージ（`RedirectAttributes`）で結果を通知し、詳細画面へリダイレクトする（PRG パターン）。
 - バリデーションエラー時はフォーム画面を再描画し、Thymeleaf の `th:errors` でエラーメッセージを表示する。
 
-## 9. セキュリティ・認証
+## 9. 業務時間チェック
+
+### 概要
+
+リクエストのたびに **業務時間チェックフィルタ** を実行し、業務サービス状況テーブルを参照して業務時間外であれば業務時間外エラー画面へ遷移する。
+
+### クラス構成
+
+| クラス | パッケージ | 役割 |
+|---|---|---|
+| `BusinessHoursFilter` | `common.filter` | リクエストごとに業務時間チェックを行う Servlet Filter |
+| `BusinessHoursMapper` | `common.mapper` | 業務サービス状況テーブルを参照（単一テーブルのため common）|
+
+### フィルタの動作
+
+1. リクエストを受け取る
+2. `BusinessHoursMapper` で業務サービス状況テーブルを参照する（`DbCall` 経由）
+3. 業務時間内 → そのまま次のフィルタ・処理へ
+4. 業務時間外 → 業務時間外エラー画面（`error/business-hours.html`）へ遷移
+
+### フィルタの適用除外
+
+SAML 認証エンドポイント（`/login/saml2/**`）等、認証フローに関わるパスはチェック対象外とする（未確定 → §10 参照）。
+
+### 業務サービス状況テーブル
+
+テーブル名・カラム定義は未確定（→ §10 参照）。
+
+### 実装イメージ
+
+```java
+// common.filter.BusinessHoursFilter
+@Component
+public class BusinessHoursFilter implements Filter {
+
+    private final BusinessHoursMapper businessHoursMapper;
+    private final DbCall dbCall;
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        boolean isOpen = dbCall.execute("SYS001",
+                () -> businessHoursMapper.isBusinessHours());
+        if (!isOpen) {
+            HttpServletRequest req = (HttpServletRequest) request;
+            req.getRequestDispatcher("/error/business-hours").forward(request, response);
+            return;
+        }
+        chain.doFilter(request, response);
+    }
+}
+```
+
+## 10. セキュリティ・認証
 
 ### 認証方式
 
@@ -516,7 +569,7 @@ MDC の値をパターンに含めることで、トラッキング ID・ユー�
 - ユーザー種別の値体系（Enum 定義に必要）
 - 認可ルール（ロールによる画面・操作の制限）
 
-## 10. 未確定・今後インプット待ちの要件
+## 11. 未確定・今後インプット待ちの要件
 
 案件から情報が入り次第、ここから各項目を確定させて該当セクション・機能ドキュメントに反映する。
 
@@ -528,5 +581,7 @@ MDC の値をパターンに含めることで、トラッキング ID・ユー�
 - [ ] 案件（プロジェクト）エンティティの正式な項目定義（現状は name のみ）
 - [ ] 更新・削除系のユースケースと楽観ロック方式（`version` カラムは既に用意済み）
 - [ ] ページング: 総件数・ページナビゲーションの要否
+- [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
+- [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
 - [x] 日付の DB 格納フォーマット → ユーザー入力日付は `yyyyMMdd`（String）、登録・更新日時は `sysdate`
