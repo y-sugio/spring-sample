@@ -91,6 +91,7 @@ demo/
 | 配置 | 内容 |
 |---|---|
 | `common.enums` | **全 Enum**。業務・レイヤーを問わず一切ここに集約する |
+| `common.util` | **共通フォーマッター**等のユーティリティ。日付の `yyyy/MM/dd` 整形、数値の 3 桁カンマ区切り変換など |
 | `common.mapper` | 単一テーブルの Mapper・Entity |
 
 ---
@@ -123,6 +124,21 @@ src/main/resources/templates/
 ```
 
 ## 4. データ型規約
+
+### 表示フォーマット（CommandOutput での変換）
+
+画面表示用の整形は **CommandOutput（および Dto）のプレゼンテーションロジック内**で行う。
+整形処理は `common.util` に置いた共通フォーマッタークラスを呼び出す。
+
+| データ種別 | DB / Java 内部値 | 画面表示形式 | 変換箇所 |
+|---|---|---|---|
+| ユーザー入力日付 | `String`（`yyyyMMdd`）または `LocalDate` | `yyyy/MM/dd` | `CommandOutput` / `Dto` |
+| 数値（金額・数量等） | `Integer` / `Long` / `BigDecimal` | 3 桁カンマ区切り（例: `1,234,567`） | `CommandOutput` / `Dto` |
+
+**共通フォーマッタークラスの配置**: `demo.common.util.Formatter`（クラス名は仮。確定次第更新）
+
+> Controller・Task・Command の計算ロジック内では整形を行わない。
+> 整形済み文字列を受け取る Thymeleaf テンプレートは `th:text` で表示するだけでよい。
 
 ### 日付
 
