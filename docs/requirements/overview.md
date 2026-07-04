@@ -92,6 +92,8 @@ demo/
 |---|---|
 | `common.enums` | **全 Enum**。業務・レイヤーを問わず一切ここに集約する |
 | `common.util` | **共通フォーマッター**等のユーティリティ。日付の `yyyy/MM/dd` 整形、数値の 3 桁カンマ区切り変換など |
+| `common.exception` | `SystemException`、`BusinessException` |
+| `common.db` | `DbCall`。Mapper 呼び出しの共通ラッパー、DB 例外を `SystemException` に変換 |
 | `common.mapper` | 単一テーブルの Mapper・Entity |
 
 ---
@@ -246,6 +248,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 |---|---|---|
 | `SystemException` | `common.exception` | システム例外。DB 障害・予期せぬエラー等 |
 | `BusinessException` | `common.exception` | 業務例外。業務ルール違反で return ルートがない場合に throw |
+| `DbCall` | `common.db` | DB 呼び出しの共通ラッパー。Mapper 呼び出しと メッセージ ID を受け取り、DB 例外を `SystemException` に変換する |
 
 ### ハンドリングの方針
 
@@ -254,6 +257,12 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 - `SystemException` は `GlobalExceptionHandler`（`@ControllerAdvice`）で一括キャッチする。
 - 共通エラー画面（`error/system.html`）へ遷移し、`SYS` プレフィックスのメッセージを表示する。
 - 配置: `demo.config.GlobalExceptionHandler`
+
+#### DB 呼び出し（DbCall）
+
+- Mapper の呼び出しは**直接呼ばず、必ず `DbCall` 経由**で行う。
+- `DbCall` はメッセージ ID と Mapper 呼び出し（ラムダ）を受け取り、DB 例外（`DataAccessException` 等）を `SystemException` に変換して throw する。
+- これにより、各 Task・Command の Mapper 呼び出し箇所で個別に try-catch を書かなくてよい。
 
 #### 業務例外
 
@@ -286,17 +295,40 @@ Command / Task
 ### 実装イメージ
 
 ```java
-// common.exception.BusinessException
-public class BusinessException extends RuntimeException {
-    private final String messageId;
-    // ...
-}
-
 // common.exception.SystemException
 public class SystemException extends RuntimeException {
     private final String messageId;
-    // ...
 }
+
+// common.exception.BusinessException
+public class BusinessException extends RuntimeException {
+    private final String messageId;
+}
+
+// common.db.DbCall
+@Component
+public class DbCall {
+    // 戻り値ありの Mapper 呼び出し
+    public <T> T execute(String messageId, Supplier<T> mapperCall) {
+        try {
+            return mapperCall.get();
+        } catch (DataAccessException e) {
+            throw new SystemException(messageId, e);
+        }
+    }
+    // 戻り値なしの Mapper 呼び出し（INSERT / UPDATE / DELETE）
+    public void execute(String messageId, Runnable mapperCall) {
+        try {
+            mapperCall.run();
+        } catch (DataAccessException e) {
+            throw new SystemException(messageId, e);
+        }
+    }
+}
+
+// Task / Command での使用イメージ
+ProjectEntity entity = dbCall.execute("SYS001", () -> projectMapper.findById(id));
+dbCall.execute("SYS001", () -> projectMapper.insert(entity));
 
 // config.GlobalExceptionHandler
 @ControllerAdvice
