@@ -587,14 +587,22 @@ public class BusinessHoursFilter implements Filter {
 
 ### シークレット管理（Azure Key Vault）
 
-DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で管理し、`application.properties` にはシークレット名のみを記載する。
+DB ユーザーのパスワード・証明書等の機密情報は **Azure Key Vault** で管理し、`application.properties` にはシークレット名のみを記載する。
 
 - ライブラリ: `spring-cloud-azure-starter-keyvault-secrets`
 - アプリ起動時に Key Vault からシークレットを取得し、Spring の `Environment` に注入する。
-- `application.properties` の DB パスワード設定例:
+- `application.properties` の DB 接続設定例:
   ```properties
-  spring.datasource.password=${db-password}   # Key Vault のシークレット名
+  spring.datasource.password=${db-password}       # Key Vault のシークレット名
+  spring.datasource.url=${db-url}                 # 接続 URL も Key Vault で管理（未確定）
   ```
+
+### DB 接続証明書
+
+DB への接続には**証明書**が必要。証明書は Azure Key Vault で管理する。
+
+- 証明書の種別・用途・配置方法は未確定（→ §12 参照）。
+- 一般的な方式として、Key Vault から証明書を取得しアプリ起動時に JVM のトラストストア / キーストアに設定する。
 - Key Vault へのアクセスは**マネージド ID** で認証する。
 - ローカル開発時は `DefaultAzureCredential` のフォールバックチェーンにより **Azure CLI 認証**（`az login`）を使用する。設定変更不要で、`az login` 済みの Azure アカウントに Key Vault アクセス権があれば接続できる。
 
@@ -632,6 +640,9 @@ DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で�
 - [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
 - [x] Key Vault へのアクセス認証方式 → マネージド ID
 - [x] ローカル開発時の DB パスワード管理 → Key Vault に接続。`az login` 後に Azure CLI 認証でアクセス
+- [ ] DB 接続証明書の種別（サーバー証明書の検証用か、クライアント証明書による相互 TLS か）
+- [ ] 証明書の Key Vault からの取得方法・JVM への設定方法（トラストストア or キーストア）
+- [ ] ローカル開発時の証明書取得・設定手順
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
