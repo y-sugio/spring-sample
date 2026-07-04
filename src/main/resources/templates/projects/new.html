@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>案件作成</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}"/>
+  <style>
+    .form-container { max-width: 600px; margin: 2rem auto; }
+  </style>
+</head>
+<body class="bg-light">
+
+<nav th:replace="~{fragments/nav :: navbar}"></nav>
+
+<main class="container">
+  <div class="form-container">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h1 class="h4 m-0">案件作成</h1>
+      </div>
+      <div class="card-body">
+        <form method="post" th:action="@{/page/projects}" th:object="${form}">
+          <div class="mb-3">
+            <label for="name" class="form-label fw-semibold">案件名</label>
+            <input id="name" name="name" type="text"
+                   maxlength="100"
+                   th:value="*{name}"
+                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid'"
+                   class="form-control"
+                   placeholder="例：新規システム開発プロジェクト"/>
+            <div class="form-text text-muted">100文字以内で入力してください。</div>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                 th:errors="*{name}"></div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a th:href="@{/page/projects}" class="btn btn-outline-secondary">キャンセル</a>
+            <button type="submit" class="btn btn-primary">作成</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

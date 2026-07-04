@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="${project.name()} + ' - 案件詳細'">案件詳細</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}"/>
+  <style>
+    .detail-card { max-width: 960px; }
+  </style>
+</head>
+<body class="bg-light">
+
+<nav th:replace="~{fragments/nav :: navbar}"></nav>
+
+<main class="container py-4">
+
+  <!-- フラッシュメッセージ -->
+  <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a th:href="@{/page/projects}">案件一覧</a></li>
+      <li class="breadcrumb-item active" aria-current="page"
+          th:text="${project.name()}"></li>
+    </ol>
+  </nav>
+
+  <h1 class="h3 mb-3" th:text="${project.name()}"></h1>
+
+  <div class="card shadow-sm detail-card">
+    <div class="card-header bg-white"><strong>案件詳細</strong></div>
+    <div class="card-body">
+      <table class="table table-sm align-middle mb-0">
+        <tbody>
+        <tr>
+          <th style="width:180px" class="text-muted fw-normal">案件ID</th>
+          <td><span class="badge text-bg-secondary" th:text="${project.projectId()}"></span></td>
+        </tr>
+        <tr>
+          <th class="text-muted fw-normal">バージョン</th>
+          <td th:text="${project.version()}"></td>
+        </tr>
+        <tr>
+          <th class="text-muted fw-normal">作成日時</th>
+          <td th:text="${#temporals.format(project.createDate(), 'yyyy/MM/dd HH:mm:ss')}"></td>
+        </tr>
+        <tr>
+          <th class="text-muted fw-normal">更新日時</th>
+          <td th:text="${#temporals.format(project.updateDate(), 'yyyy/MM/dd HH:mm:ss')}"></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer bg-white d-flex gap-2">
+      <a th:href="@{/page/projects}" class="btn btn-outline-secondary">一覧へ戻る</a>
+    </div>
+  </div>
+</main>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

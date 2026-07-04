@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" th:href="@{/page/projects}">案件管理</a>
+    <div class="ms-auto d-flex gap-2">
+      <a class="btn btn-outline-light btn-sm" th:href="@{/page/projects}">一覧</a>
+      <a class="btn btn-outline-light btn-sm" th:href="@{/page/projects/new}">新規作成</a>
+    </div>
+  </div>
+</nav>
+</body>
+</html>

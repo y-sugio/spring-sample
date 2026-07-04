@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>案件一覧</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}"/>
+</head>
+<body class="bg-light">
+
+<nav th:replace="~{fragments/nav :: navbar}"></nav>
+
+<main class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">案件一覧</h1>
+    <span class="text-muted small">（最大20件まで表示）</span>
+  </div>
+
+  <!-- 検索フォーム -->
+  <form class="row g-2 align-items-center mb-4" method="get" th:action="@{/page/projects}">
+    <div class="col-auto">
+      <input type="text" class="form-control form-control-sm"
+             name="q" placeholder="検索（案件名）"
+             th:value="${q}"/>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm">検索</button>
+    </div>
+    <div class="col-auto" th:if="${q != null and !#strings.isEmpty(q)}">
+      <a th:href="@{/page/projects}" class="btn btn-outline-secondary btn-sm">クリア</a>
+    </div>
+  </form>
+
+  <!-- フラッシュメッセージ -->
+  <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- テーブル -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead>
+          <tr>
+            <th style="width:5%">ID</th>
+            <th>案件名</th>
+            <th style="width:10%">バージョン</th>
+            <th style="width:22%">作成日時</th>
+            <th style="width:22%">更新日時</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="p : ${projects}">
+            <td>
+              <a th:href="@{/page/projects/{id}(id=${p.projectId()})}"
+                 th:text="${p.projectId()}"
+                 class="text-decoration-none"></a>
+            </td>
+            <td>
+              <a th:href="@{/page/projects/{id}(id=${p.projectId()})}"
+                 th:text="${p.name()}"
+                 class="text-decoration-none text-dark"></a>
+            </td>
+            <td th:text="${p.version()}"></td>
+            <td th:text="${#temporals.format(p.createDate(), 'yyyy/MM/dd HH:mm')}"></td>
+            <td th:text="${#temporals.format(p.updateDate(), 'yyyy/MM/dd HH:mm')}"></td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(projects)}">
+            <td colspan="5" class="text-center text-muted py-3">データがありません</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>
