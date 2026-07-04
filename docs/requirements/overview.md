@@ -21,7 +21,8 @@
 | フレームワーク | Spring Boot 3.5.x | spring-boot-starter-web / validation / security |
 | ビュー | Thymeleaf | `spring-boot-starter-thymeleaf`。テンプレートは `src/main/resources/templates/` |
 | CSS | Bootstrap 5 (WebJars) | |
-| 永続化 | 現状はインメモリ（`Map`） | JPA 導入を見据えて `spring-boot-starter-data-jpa` は依存に追加済み |
+| DB | Oracle | JDBC 接続。Oracle Wallet で SSL/TLS 認証 |
+| 永続化 | MyBatis（予定） / 現状はインメモリ（`Map`） | `spring-boot-starter-data-jpa` は削除予定。MyBatis に切り替え |
 | シークレット管理 | Azure Key Vault | DB ユーザーパスワード等の機密情報を管理。`spring-cloud-azure-starter-keyvault-secrets` を使用 |
 | ビルド | Gradle | `./gradlew build` |
 
@@ -597,12 +598,16 @@ DB ユーザーのパスワード・証明書等の機密情報は **Azure Key V
   spring.datasource.url=${db-url}                 # 接続 URL も Key Vault で管理（未確定）
   ```
 
-### DB 接続証明書
+### DB 接続証明書（Oracle Wallet）
 
-DB への接続には**証明書**が必要。証明書は Azure Key Vault で管理する。
+DB（Oracle）への接続には **Oracle Wallet** を使用する。
 
-- 証明書の種別・用途・配置方法は未確定（→ §12 参照）。
-- 一般的な方式として、Key Vault から証明書を取得しアプリ起動時に JVM のトラストストア / キーストアに設定する。
+- Wallet ファイル（`cwallet.sso` / `ewallet.p12`）を Azure Key Vault で管理する。
+- アプリ起動時に Key Vault から Wallet ファイルを取得し、一時ディレクトリに展開する。
+- JDBC 接続時に `oracle.net.wallet_location` で Wallet のパスを指定する。
+- 接続 URL は TCPS プロトコルを使用する（例: `jdbc:oracle:thin:@tcps://...`）。
+
+Wallet ファイルの取得・展開方法、ローカル開発時の手順は未確定（→ §12 参照）。
 - Key Vault へのアクセスは**マネージド ID** で認証する。
 - ローカル開発時は `DefaultAzureCredential` のフォールバックチェーンにより **Azure CLI 認証**（`az login`）を使用する。設定変更不要で、`az login` 済みの Azure アカウントに Key Vault アクセス権があれば接続できる。
 
@@ -640,9 +645,9 @@ DB への接続には**証明書**が必要。証明書は Azure Key Vault で�
 - [ ] セッションタイムアウト時間（`server.servlet.session.timeout` の値）
 - [x] Key Vault へのアクセス認証方式 → マネージド ID
 - [x] ローカル開発時の DB パスワード管理 → Key Vault に接続。`az login` 後に Azure CLI 認証でアクセス
-- [ ] DB 接続証明書の種別（サーバー証明書の検証用か、クライアント証明書による相互 TLS か）
-- [ ] 証明書の Key Vault からの取得方法・JVM への設定方法（トラストストア or キーストア）
-- [ ] ローカル開発時の証明書取得・設定手順
+- [x] DB 接続証明書 → Oracle Wallet（`cwallet.sso` / `ewallet.p12`）を Key Vault で管理
+- [ ] Oracle Wallet ファイルの Key Vault からの取得・展開方法
+- [ ] ローカル開発時の Wallet 取得・設定手順
 - [ ] 業務サービス状況テーブルのテーブル名・カラム定義・業務時間の判定ロジック
 - [ ] 業務時間チェックフィルタの除外パス（SAML 認証エンドポイント等）
 - [ ] メッセージ ID のプレフィックス文字列（MSG / VAL / BIZ / SYS は仮）
