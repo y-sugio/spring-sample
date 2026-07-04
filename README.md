@@ -1,16 +1,20 @@
 # spring-sample
 springのsample実装
 
-案件からインプットした要件をドキュメントとして残しながら、対応するサンプルコードを蓄積していくリポジトリ。
+案件からインプットした情報をドキュメントとして残しながら、対応するサンプルコードを蓄積していくリポジトリ。
 
 ## ドキュメント構成
 
-- [docs/requirements/overview.md](docs/requirements/overview.md) — 全体要件・技術方針・共通規約
-- [docs/requirements/features/](docs/requirements/features/) — 機能別の要件（1機能1ファイル）
-  - [project.md](docs/requirements/features/project.md) — 案件（プロジェクト）管理
-  - [_template.md](docs/requirements/features/_template.md) — 新機能用テンプレート
+ドキュメントは「要件 / アーキテクチャ / コーディングルール」の3つに分割して管理する。
 
-新しい要件をインプットするときは、先に該当の要件ドキュメントへ反映してからコードを書く（詳細は [CLAUDE.md](CLAUDE.md)）。
+| ドキュメント | 内容 |
+|---|---|
+| [docs/requirements/overview.md](docs/requirements/overview.md) | **要件** — システムが何を満たすか（業務・画面・データ・運用） |
+| [docs/requirements/features/](docs/requirements/features/) | 機能別の要件（1機能1ファイル。[_template.md](docs/requirements/features/_template.md) をコピーして作成） |
+| [docs/architecture.md](docs/architecture.md) | **アーキテクチャ** — どういう構造・仕組みで実現するか（パッケージ構成・レイヤー・共通機構） |
+| [docs/coding-rules.md](docs/coding-rules.md) | **コーディングルール** — コードをどう書くか（命名・作成基準・使い分け） |
+
+新しいインプットを受けたときは、先に該当ドキュメントへ反映してからコードを書く（詳細は [CLAUDE.md](CLAUDE.md)）。
 
 ## 実行
 

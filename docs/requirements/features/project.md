@@ -1,6 +1,6 @@
 # 機能要件: 案件（プロジェクト）管理
 
-- ステータス: 実装済み（インメモリ実装。永続化は未確定 → [overview.md §6](../overview.md#6-未確定今後インプット待ちの要件)）
+- ステータス: 実装済み（インメモリ実装。永続化は未確定 → [overview.md §7](../overview.md#7-未確定今後インプット待ちの要件)）
 - 関連コード:
   - 画面: `src/main/java/demo/presentation/project/ProjectPageController.java`
   - ロジック: `src/main/java/demo/domain/project/ProjectService.java`
