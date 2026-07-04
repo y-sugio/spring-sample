@@ -26,16 +26,36 @@
 
 ## 3. アーキテクチャ / パッケージ構成
 
-レイヤードアーキテクチャ。ルートパッケージは `demo`。
+### パッケージ分割の基準: 業務単位
+
+パッケージは**技術レイヤーではなく業務単位**で切る。
+
+> **業務の定義**: ユーザーが一連として行う作業のまとまり。  
+> 例）案件に対して「新規作成・一覧確認・詳細確認・更新」を行うなら、それらを一まとめにして一つの業務とする。  
+> 複数のドメインをまたぐケースでも、ユーザーの業務としての結びつきが強ければ同一パッケージに収める。
 
 ```
 demo/
-├── config/            … Security などの横断設定
-├── domain/
-│   └── <feature>/     … ビジネスロジック（Service）。将来的にエンティティ・リポジトリもここ
-└── presentation/
-    └── <feature>/     … Controller、リクエスト DTO
+├── config/            … Security など横断設定（業務に属さないもの）
+└── <業務名>/          … 業務ごとのパッケージ
+    ├── XxxController.java      … 画面コントローラ
+    ├── XxxService.java         … ビジネスロジック
+    ├── XxxDto.java             … レスポンス/画面渡しデータ
+    └── CreateXxxRequest.java   … フォーム入力値
 ```
+
+**テンプレートも業務単位で揃える**:
+
+```
+src/main/resources/templates/
+├── fragments/          … 共通部品（ナビゲーション等）
+└── <業務名>/           … 業務ごとのテンプレート
+    ├── list.html
+    ├── new.html
+    └── detail.html
+```
+
+### クラス設計の方針
 
 - Controller は `@Controller`。
 - Service の返り値 DTO（record）をそのまま Model に渡す。
