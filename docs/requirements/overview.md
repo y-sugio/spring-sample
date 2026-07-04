@@ -134,11 +134,46 @@ src/main/resources/templates/
 |---|---|---|---|
 | ユーザー入力日付 | `String`（`yyyyMMdd`）または `LocalDate` | `yyyy/MM/dd` | `CommandOutput` / `Dto` |
 | 数値（金額・数量等） | `Integer` / `Long` / `BigDecimal` | 3 桁カンマ区切り（例: `1,234,567`） | `CommandOutput` / `Dto` |
+| 区分値 | `String`（DB のコード値） | Enum のラベル（表示名） | `CommandOutput` / `Dto` |
 
 **共通フォーマッタークラスの配置**: `demo.common.util.Formatter`（クラス名は仮。確定次第更新）
 
 > Controller・Task・Command の計算ロジック内では整形を行わない。
 > 整形済み文字列を受け取る Thymeleaf テンプレートは `th:text` で表示するだけでよい。
+
+### 区分値（Enum）
+
+DB はコード値（`String`）で管理する。Enum はコードを保持し、`CommandOutput` / `Dto` 内でコード → Enum に変換して表示ラベルを取得する。
+
+**Enum の実装規約**:
+- 全 Enum は `common.enums` パッケージに配置する（再掲）。
+- 各 Enum はコード値フィールドと表示ラベルフィールドを持つ。
+- コードから Enum を引くファクトリメソッド（例: `fromCode(String code)`）を実装する。
+
+```java
+// 実装イメージ（common.enums）
+public enum StatusEnum {
+    ACTIVE("1", "有効"),
+    INACTIVE("2", "無効");
+
+    private final String code;
+    private final String label;
+
+    public static StatusEnum fromCode(String code) {
+        return Arrays.stream(values())
+                .filter(e -> e.code.equals(code))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code: " + code));
+    }
+}
+
+// CommandOutput での使用イメージ
+public String getStatusLabel() {
+    return StatusEnum.fromCode(this.statusCode).getLabel();
+}
+```
+
+> Entity はコード値（`String`）のまま保持する。Enum への変換は CommandOutput / Dto 内でのみ行う。
 
 ### 日付
 
