@@ -94,6 +94,8 @@ demo/
 | `common.util` | **共通フォーマッター**等のユーティリティ。日付の `yyyy/MM/dd` 整形、数値の 3 桁カンマ区切り変換など |
 | `common.exception` | `SystemException`、`BusinessException` |
 | `common.db` | `DbCall`。Mapper 呼び出しの共通ラッパー、DB 例外を `SystemException` に変換 |
+| `common.aspect` | `LoggingAspect`。各レイヤーの開始・終了ログを AOP で出力 |
+| `common.filter` | `MdcFilter`。リクエストごとにトラッキング ID・ユーザー ID・IP を MDC にセット |
 | `common.mapper` | 単一テーブルの Mapper・Entity |
 | `common.mapper.typehandler` | MyBatis TypeHandler（`LocalDateTypeHandler` 等） |
 
@@ -382,14 +384,107 @@ public String create(...) {
 }
 ```
 
-## 7. 画面共通要件
+## 7. ログ・トラッキング
+
+### 方針
+
+- 各レイヤーの開始・終了を AOP（Aspect）でログ出力する。
+- リクエストごとにトラッキング ID を発行し、MDC に載せて全ログで串刺しできるようにする。
+- MDC にはトラッキング ID・ユーザー ID・クライアント IP を設定する。
+
+### クラス構成
+
+| クラス | パッケージ | 役割 |
+|---|---|---|
+| `LoggingAspect` | `common.aspect` | 各レイヤーの開始・終了ログを出力する Aspect |
+| `MdcFilter` | `common.filter` | リクエスト開始時に MDC をセット、終了時にクリアする Servlet Filter |
+
+### MDC に設定する項目
+
+| MDC キー | 内容 | 取得元 |
+|---|---|---|
+| `trackingId` | リクエストごとに発行する UUID | `MdcFilter` で `UUID.randomUUID()` |
+| `userId` | ログイン中のユーザー ID | セッション（認証未導入のうちは固定値または空） |
+| `clientIp` | クライアントの IP アドレス | `HttpServletRequest.getRemoteAddr()` |
+
+### LoggingAspect の対象レイヤーと出力内容
+
+| ポイントカット対象 | 出力タイミング | 出力内容 |
+|---|---|---|
+| `*.controller.*Controller` | 開始・終了 | クラス名、メソッド名、引数 |
+| `*.command.*Command` | 開始・終了 | クラス名、メソッド名、引数 |
+| `*.task.*Task` | 開始・終了 | クラス名、メソッド名、引数 |
+| `*.mapper.*Mapper` | 開始・終了 | クラス名、メソッド名、引数 |
+
+- 例外発生時は終了ログに例外情報を付与する。
+- ログレベルは DEBUG（本番では INFO 以上に絞ることを想定）。
+
+### 実装イメージ
+
+```java
+// common.filter.MdcFilter
+@Component
+public class MdcFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        HttpServletRequest req = (HttpServletRequest) request;
+        MDC.put("trackingId", UUID.randomUUID().toString());
+        MDC.put("clientIp", req.getRemoteAddr());
+        MDC.put("userId", /* セッションからユーザーID取得。未認証時は "-" */);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            MDC.clear();
+        }
+    }
+}
+
+// common.aspect.LoggingAspect
+@Aspect
+@Component
+public class LoggingAspect {
+    private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
+
+    @Pointcut("execution(* demo..controller.*Controller.*(..))" +
+              " || execution(* demo..command.*Command.*(..))" +
+              " || execution(* demo..task.*Task.*(..))" +
+              " || execution(* demo..mapper.*Mapper.*(..))")
+    public void layerMethods() {}
+
+    @Around("layerMethods()")
+    public Object logAround(ProceedingJoinPoint pjp) throws Throwable {
+        String cls = pjp.getSignature().getDeclaringType().getSimpleName();
+        String method = pjp.getSignature().getName();
+        log.debug("[START] {}.{} args={}", cls, method, pjp.getArgs());
+        try {
+            Object result = pjp.proceed();
+            log.debug("[END]   {}.{}", cls, method);
+            return result;
+        } catch (Throwable t) {
+            log.debug("[END]   {}.{} exception={}", cls, method, t.getMessage());
+            throw t;
+        }
+    }
+}
+```
+
+### ログ出力フォーマット（application.properties / logback）
+
+MDC の値をパターンに含めることで、トラッキング ID・ユーザー ID・IP を全ログ行に出力する。
+
+```
+[%X{trackingId}] [%X{userId}] [%X{clientIp}] %-5level %logger{36} - %msg%n
+```
+
+## 8. 画面共通要件
 
 - ベースパス: `/page`
 - ルート `/` は案件一覧（`/page/projects`）にリダイレクトする。
 - 登録・更新完了時はフラッシュメッセージ（`RedirectAttributes`）で結果を通知し、詳細画面へリダイレクトする（PRG パターン）。
 - バリデーションエラー時はフォーム画面を再描画し、Thymeleaf の `th:errors` でエラーメッセージを表示する。
 
-## 8. セキュリティ
+## 9. セキュリティ
 
 現状は開発フェーズの暫定設定。**本番導入時は要再検討**。
 
@@ -397,7 +492,7 @@ public String create(...) {
 - CSRF: 無効化中（Cookie 認証を入れる場合は再有効化を検討）。
 - CORS: 画面のみのため現時点では設定不要。
 
-## 9. 未確定・今後インプット待ちの要件
+## 10. 未確定・今後インプット待ちの要件
 
 案件から情報が入り次第、ここから各項目を確定させて該当セクション・機能ドキュメントに反映する。
 
