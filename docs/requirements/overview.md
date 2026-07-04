@@ -38,6 +38,7 @@
 demo/
 ├── config/                     … Security など横断設定
 ├── common/
+│   ├── enums/                  … 全 Enum（業務・レイヤーを問わず全てここに集約）
 │   └── mapper/                 … 単一テーブルを扱う Mapper・Entity
 └── <業務名>/                   … 業務パッケージ（例: project）
     ├── controller/             … Controller レイヤ
@@ -84,6 +85,13 @@ demo/
 |---|---|
 | `common.mapper` | **単一テーブル**を扱う Mapper・Entity |
 | `<業務>.mapper` | **複数テーブル**をまたぎ、業務との結びつきが強い Mapper・Entity |
+
+#### common パッケージ
+
+| 配置 | 内容 |
+|---|---|
+| `common.enums` | **全 Enum**。業務・レイヤーを問わず一切ここに集約する |
+| `common.mapper` | 単一テーブルの Mapper・Entity |
 
 ---
 
