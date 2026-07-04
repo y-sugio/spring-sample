@@ -238,14 +238,97 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 - バリデーションエラーメッセージも同プロパティで管理し、`@NotBlank` 等のアノテーションの `message` 属性にメッセージ ID を指定する。
 - Thymeleaf テンプレートからは `#{メッセージID}` 構文で直接参照できる。
 
-## 6. 画面共通要件
+## 6. 例外ハンドリング
+
+### 例外クラスの種類と配置
+
+| クラス | パッケージ | 用途 |
+|---|---|---|
+| `SystemException` | `common.exception` | システム例外。DB 障害・予期せぬエラー等 |
+| `BusinessException` | `common.exception` | 業務例外。業務ルール違反で return ルートがない場合に throw |
+
+### ハンドリングの方針
+
+#### システム例外
+
+- `SystemException` は `GlobalExceptionHandler`（`@ControllerAdvice`）で一括キャッチする。
+- 共通エラー画面（`error/system.html`）へ遷移し、`SYS` プレフィックスのメッセージを表示する。
+- 配置: `demo.config.GlobalExceptionHandler`
+
+#### 業務例外
+
+- `BusinessException` は **Controller でキャッチ**する（`GlobalExceptionHandler` では処理しない）。
+- Controller がキャッチ後、Model にメッセージを設定して元の画面を再描画する。
+- throw するのは「CommandOutput でデータを返す処理においてエラーが発生し、通常の return ルートを使えないケース」。
+
+### 例外の流れ
+
+```
+【システム例外】
+任意のレイヤー
+  └─ throw SystemException("SYS001")
+        ↓
+    GlobalExceptionHandler（@ControllerAdvice）
+        ↓
+    error/system.html（SYS メッセージを表示）
+
+【業務例外】
+Command / Task
+  └─ throw BusinessException("BIZ001")
+        ↓
+    Controller（try-catch）
+        ↓
+    model.addAttribute("errorMessage", ...)
+        ↓
+    元の画面を return（re-render）
+```
+
+### 実装イメージ
+
+```java
+// common.exception.BusinessException
+public class BusinessException extends RuntimeException {
+    private final String messageId;
+    // ...
+}
+
+// common.exception.SystemException
+public class SystemException extends RuntimeException {
+    private final String messageId;
+    // ...
+}
+
+// config.GlobalExceptionHandler
+@ControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(SystemException.class)
+    public String handleSystem(SystemException ex, Model model) {
+        model.addAttribute("errorMessage", /* messageSource.getMessage(ex.getMessageId()) */);
+        return "error/system";
+    }
+}
+
+// Controller での業務例外キャッチ
+@PostMapping
+public String create(...) {
+    try {
+        command.execute(input);
+    } catch (BusinessException ex) {
+        model.addAttribute("errorMessage", /* messageSource.getMessage(ex.getMessageId()) */);
+        return "projects/new";  // 元の画面を再描画
+    }
+    return "redirect:/page/projects/...";
+}
+```
+
+## 7. 画面共通要件
 
 - ベースパス: `/page`
 - ルート `/` は案件一覧（`/page/projects`）にリダイレクトする。
 - 登録・更新完了時はフラッシュメッセージ（`RedirectAttributes`）で結果を通知し、詳細画面へリダイレクトする（PRG パターン）。
 - バリデーションエラー時はフォーム画面を再描画し、Thymeleaf の `th:errors` でエラーメッセージを表示する。
 
-## 7. セキュリティ
+## 8. セキュリティ
 
 現状は開発フェーズの暫定設定。**本番導入時は要再検討**。
 
@@ -253,7 +336,7 @@ SYS001=SYS001 システムエラーが発生しました。管理者にお問い
 - CSRF: 無効化中（Cookie 認証を入れる場合は再有効化を検討）。
 - CORS: 画面のみのため現時点では設定不要。
 
-## 8. 未確定・今後インプット待ちの要件
+## 9. 未確定・今後インプット待ちの要件
 
 案件から情報が入り次第、ここから各項目を確定させて該当セクション・機能ドキュメントに反映する。
 
