@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>案件検索・登録</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}"/>
+  <style>
+    .entry-container { max-width: 720px; margin: 2rem auto; }
+  </style>
+</head>
+<body class="bg-light">
+
+<nav th:replace="~{fragments/nav :: navbar}"></nav>
+
+<main class="container entry-container">
+
+  <!--/* パターン C: 登録実行 → 自画面リダイレクト後にフラッシュメッセージを表示 */-->
+  <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!--/* 業務エラー（BusinessException を Controller でキャッチして自画面を再描画） */-->
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}"></span>
+  </div>
+
+  <!-- ============================================================
+       検索（画面遷移パターン B: 検索実行 → 一覧へ遷移）
+       検索用フォーム（ProjectSearchForm）。必須項目なし。
+       ============================================================ -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+      <h1 class="h5 m-0">案件検索</h1>
+    </div>
+    <div class="card-body">
+      <form method="get" th:action="@{/page/projects}" th:object="${searchForm}">
+        <div class="row g-2 align-items-end">
+          <div class="col">
+            <label for="q" class="form-label fw-semibold">案件名</label>
+            <input id="q" name="q" type="text" class="form-control"
+                   th:value="*{q}" placeholder="部分一致で検索（未入力なら全件）"/>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-primary">検索</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       登録（画面遷移パターン C: 登録実行 → 自画面遷移しメッセージ表示）
+       登録用フォーム（ProjectForm）。検索用とはバリデーションが別物。
+       ============================================================ -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h1 class="h5 m-0">案件登録</h1>
+    </div>
+    <div class="card-body">
+      <form method="post" th:action="@{/page/projects/entry}" th:object="${form}">
+        <div class="row g-2 align-items-end">
+          <div class="col">
+            <label for="name" class="form-label fw-semibold">案件名</label>
+            <input id="name" name="name" type="text" maxlength="100"
+                   th:value="*{name}"
+                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid'"
+                   class="form-control"
+                   placeholder="例：新規システム開発プロジェクト"/>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                 th:errors="*{name}"></div>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-success">登録</button>
+          </div>
+        </div>
+        <div class="form-text text-muted mt-2">登録は案件名が必須です（検索は未入力でも実行できます）。</div>
+      </form>
+    </div>
+  </div>
+</main>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

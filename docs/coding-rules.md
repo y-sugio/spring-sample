@@ -58,6 +58,8 @@
 
 - Controller のハンドラメソッドはアクションごとに分け、それぞれの `@Valid` 対象を専用 Form にする。
 - 同じ画面項目名でも、検索は必須なし・登録は必須あり、のように制約が異なるのが前提のため、アノテーションを条件付きで無効化するような実装（バリデーショングループの使い回し等）はしない。
+- 実装サンプル: `templates/projects/entry.html` + `ProjectController#entryForm` / `#entryCreate`
+  （検索フォームは GET で一覧へ = パターン B、登録フォームは POST で自画面リダイレクト = パターン C）。
 
 ```java
 // 単項目: Form のアノテーション

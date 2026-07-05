@@ -92,6 +92,57 @@ public class ProjectController {
         return "projects/new";
     }
 
+    /**
+     * 検索・登録画面（1 画面で検索・登録の 2 アクションを持つ。画面遷移パターン B・C）。
+     * 検索実行はこの画面の検索フォームから GET /page/projects（一覧）へ遷移する（パターン B）。
+     * 一覧からの「戻る」時はセッションの検索条件を復元し、検索項目が入力された状態で表示する。
+     */
+    @GetMapping("/entry")
+    public String entryForm(HttpSession session, Model model) {
+        String q = null;
+        if (session.getAttribute(SESSION_SEARCH_CONDITION) instanceof SearchCondition saved) {
+            q = saved.q();
+        }
+        model.addAttribute("searchForm", new ProjectSearchForm(q));
+        model.addAttribute("form", new ProjectForm(null));
+        return "projects/entry";
+    }
+
+    /**
+     * 検索・登録画面からの登録実行（パターン C: 自画面に遷移してメッセージ表示）。
+     * 検索用（ProjectSearchForm）と登録用（ProjectForm）でバリデーションは別物
+     * （coding-rules.md §3）。
+     */
+    @PostMapping("/entry")
+    public String entryCreate(@Valid @ModelAttribute("form") ProjectForm form,
+                              BindingResult bindingResult, HttpSession session,
+                              Model model, RedirectAttributes ra) {
+        if (bindingResult.hasErrors()) {
+            restoreEntrySearchForm(session, model);
+            return "projects/entry";
+        }
+        try {
+            createCommand.execute(new ProjectCreateCommandInput(form.name()));
+        } catch (BusinessException e) {
+            // 業務例外: メッセージを設定して元の画面（自画面）を再描画
+            model.addAttribute("errorMessage", resolve(e.getMessageId()));
+            restoreEntrySearchForm(session, model);
+            return "projects/entry";
+        }
+        ra.addFlashAttribute("message", resolve("MSG001"));
+        // パターン C: 自画面へリダイレクトしてメッセージを表示（PRG）
+        return "redirect:/page/projects/entry";
+    }
+
+    /** 登録エラーで再描画するとき、検索フォーム側の入力状態も復元する */
+    private void restoreEntrySearchForm(HttpSession session, Model model) {
+        String q = null;
+        if (session.getAttribute(SESSION_SEARCH_CONDITION) instanceof SearchCondition saved) {
+            q = saved.q();
+        }
+        model.addAttribute("searchForm", new ProjectSearchForm(q));
+    }
+
     /** 登録実行 */
     @PostMapping
     public String create(@Valid @ModelAttribute("form") ProjectForm form,
