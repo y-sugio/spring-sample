@@ -39,10 +39,11 @@ dependencies {
     // TODO: DB 接続確定後に mybatis-spring-boot-starter へ置き換える（DataSource が必要なため現状は core のみ）
     implementation 'org.mybatis:mybatis:3.5.16'
 
-    // TODO: Azure Key Vault 連携（シークレット・Oracle Wallet 取得）。エンドポイント確定後に有効化する
+    // TODO: Azure Key Vault 連携（DB パスワード等のシークレット取得）。エンドポイント確定後に有効化する
     // implementation 'com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:5.22.0'
 
-    // TODO: Oracle JDBC ドライバ。DB 接続確定後に有効化する
+    // TODO: Oracle JDBC ドライバ（thin。19c 相当の通信規格をカバー。Client・Wallet 不要の見込み）。
+    //       DB 接続確定後に有効化する
     // implementation 'com.oracle.database.jdbc:ojdbc11'
 
     // （任意）Lombokを使うなら

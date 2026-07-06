@@ -11,7 +11,7 @@
 | フレームワーク | Spring Boot 3.5.x | spring-boot-starter-web / validation / security |
 | ビュー | Thymeleaf | `spring-boot-starter-thymeleaf`。テンプレートは `src/main/resources/templates/` |
 | CSS | Bootstrap 5 (WebJars) | |
-| DB | Oracle | JDBC + TCPS。Oracle Wallet で SSL/TLS 認証 |
+| DB | Oracle | ojdbc（thin ドライバ）で接続。Oracle Client・Wallet は不要の見込み（暗号化要件の確認待ち） |
 | O/R マッパー | MyBatis（予定） | 現状は Mapper インターフェースの裏でインメモリ仮実装（`InMemoryProjectMapper`） |
 | 認証 | Spring Security SAML SP | `spring-security-saml2-service-provider`。IdP は Azure Entra ID |
 | シークレット管理 | Azure Key Vault | `spring-cloud-azure-starter-keyvault-secrets` + `DefaultAzureCredential` |
@@ -356,7 +356,7 @@ http.sessionManagement(session -> session
 OpenSAML が Maven Central にないため、依存（`spring-security-saml2-service-provider` + Shibboleth リポジトリ）は
 build.gradle にコメントアウトで用意してあり、導入時に有効化する。
 
-## 9. インフラ接続（Key Vault / Oracle Wallet）
+## 9. インフラ接続（Key Vault / Oracle 接続）
 
 ### Azure Key Vault
 
@@ -373,17 +373,19 @@ build.gradle にコメントアウトで用意してあり、導入時に有効�
 | Azure（本番・ステージング等） | マネージド ID | アプリのマネージド ID に Key Vault アクセスポリシーを付与 |
 | ローカル開発 | Azure CLI（`az login`） | 開発者アカウントに Key Vault アクセスポリシーを付与 |
 
-### Oracle Wallet
+### Oracle 接続（ojdbc thin）
 
-- Wallet ファイル（`cwallet.sso` / `ewallet.p12`）を Key Vault で管理する。
-- アプリ起動時に Key Vault から Wallet を取得し、一時ディレクトリに展開する（取得・展開方法は未確定）。
-- JDBC 接続時に `oracle.net.wallet_location` で Wallet のパスを指定する。
-- 接続 URL は TCPS プロトコルを使用する（例: `jdbc:oracle:thin:@tcps://...`）。
+- **ojdbc（thin ドライバ）** で接続する。thin は Oracle Net プロトコルを純 Java 実装しているため、
+  Oracle Client のインストールは不要。
+- 旧環境は Oracle Client 12c（thick/OCI 接続）で Wallet が必要だったが、
+  thin ドライバは 19c 相当の通信規格をカバーするため **Wallet は不要の見込み**。
+- 接続 URL は通常の thin 形式（例: `jdbc:oracle:thin:@//host:1521/service`）。URL は Key Vault で管理する。
+- 通信暗号化が必要な場合（確認待ち）:
+  - **NNE（Native Network Encryption）** … 接続プロパティ（`oracle.net.encryption_client` 等）のみで対応。Wallet 不要
+  - **TCPS（SSL/TLS）** … この場合のみ Wallet（証明書）が必要。`config/OracleWalletInitializer.java` に骨組みを残置
 
-**実装状況**: `config/OracleWalletInitializer.java` に Wallet パス設定の骨組みを実装済み
-（`app.oracle.wallet-location` 設定時のみ動作。Key Vault からの取得・展開は TODO としてコードに記載）。
-Key Vault 依存（`spring-cloud-azure-starter-keyvault-secrets`）とプロパティは
-build.gradle / application.properties にコメントアウトで用意してあり、エンドポイント確定後に有効化する。
+**実装状況**: Key Vault 依存（`spring-cloud-azure-starter-keyvault-secrets`）・ojdbc 依存・接続プロパティは
+build.gradle / application.properties にコメントアウトで用意してあり、エンドポイント・暗号化要件の確定後に有効化する。
 
 ## 10. 日付変換機構（MyBatis TypeHandler）
 

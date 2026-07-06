@@ -94,14 +94,16 @@
 
 ## 5. データ要件
 
-- DB は **Oracle**。接続には **Oracle Wallet** が必要。
+- DB は **Oracle**。接続は **ojdbc（thin ドライバ）** で行う。
+  - 旧環境は Oracle Client 12c（thick 接続）で、その構成ではローカル接続に Wallet が必要だった。
+  - thin ドライバは Oracle Client のインストール不要で、19c 相当の通信規格をカバーするため **Oracle Wallet は不要の見込み**（DB 側の暗号化要件の確認待ち → §7）。
 - ユーザーが入力した日付は **`yyyyMMdd` 形式の文字列**で DB に格納する（例: `"20250104"`）。
 - 登録日時・更新日時は **DB の `sysdate`** で記録する（アプリからは値を渡さない）。
 - 区分値は**コード値**で DB に格納する。
 
 ## 6. セキュリティ・運用要件
 
-- DB ユーザーのパスワード・Oracle Wallet 等の機密情報は **Azure Key Vault** で管理する。
+- DB ユーザーのパスワード等の機密情報は **Azure Key Vault** で管理する。
   - Azure 環境からは**マネージド ID**、ローカル開発時は **Azure CLI 認証**（`az login`）でアクセスする。
   - ローカル開発でも Key Vault に接続する（ローカル専用のパスワード管理は行わない）。
 - 設定ファイルにパスワード等の機密情報を直書きしない。
@@ -118,12 +120,12 @@
 - [ ] 認可ルール（ユーザー種別による画面・操作の制限）
 
 ### DB・インフラ
-- [x] RDBMS → Oracle（Oracle Wallet + TCPS 接続）
+- [x] RDBMS → Oracle（ojdbc thin ドライバで接続）
 - [ ] スキーマ設計・マイグレーションツール
-- [x] DB 接続証明書 → Oracle Wallet（`cwallet.sso` / `ewallet.p12`）を Key Vault で管理
+- [x] DB 接続証明書 → **Oracle Wallet は不要の見込み**。旧環境の Oracle Client 12c（thick）では必要だったが、ojdbc thin は 19c 相当の通信規格をカバーするため Client・Wallet とも不要
 - [x] Key Vault へのアクセス認証方式 → マネージド ID（ローカルは `az login`）
-- [ ] Oracle Wallet ファイルの Key Vault からの取得・展開方法 ※パス設定の骨組みは `config/OracleWalletInitializer.java` に実装済み
-- [ ] ローカル開発時の Wallet 取得・設定手順
+- [ ] DB 側の通信暗号化要件の確認（NNE=Native Network Encryption なら接続プロパティのみ / TCPS なら Wallet が再度必要。TCPS 用の骨組みは `config/OracleWalletInitializer.java` に残置）
+- [ ] 使用する ojdbc のバージョン確定（Boot 3.5 なら `ojdbc11` を想定）
 
 ### 画面遷移
 - [ ] 「戻る」時の状態保持の実現方式（セッション保持か、hidden パラメータ引き回しか）※現状はセッション保持で仮実装済み（`ProjectController`）
